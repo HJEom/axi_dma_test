@@ -1,3 +1,7 @@
+
+// 32bytes 읽어와서 write해라고 했지만
+// 8bytes만 함.
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -12,13 +16,14 @@
 #define DMA_HIGH 0x4040FFFF
 #define DMA_MASK (DMA_HIGH - DMA_BASE)
 
-#define DRAM_BASE 0x00000000
-#define DRAM_HIGH 0x1FFFFFFF
-#define DRAM_MASK (DRAM_HIGH - DRAM_BASE)
+#define DRAM_S_BASE 0x0e000000
+#define DRAM_S_HIGH 0x0e00ffff
+#define DRAM_D_BASE 0x0f000000
+#define DRAM_D_HIGH 0x0f00ffff
 
 #define PROT (PROT_READ|PROT_WRITE)
 #define FLAGS (MAP_SHARED)
-#define BUFF_SIZE 0xF
+#define BUFF_SIZE 10
 
 // MM2S CONTROL
 #define MM2S_CONTROL_REGISTER        0x00    // MM2S_DMACR
@@ -95,13 +100,13 @@ int main(){
 //		return 1;
 //	}
 
-	phy_dram_base = mmap(NULL, 0xffff, PROT, FLAGS, fd, 0x1e000000);
+	phy_dram_base = mmap(NULL, 0xffff, PROT, FLAGS, fd, DRAM_S_BASE);
 	if(phy_dram_base == MAP_FAILED){
 		printf("ERROR: dram mmap() failed...\n" );
 		return 1;
 	}	
 	
-	phy_dram_base_t = mmap(NULL, 0xffff, PROT, FLAGS, fd, 0x0f000000);
+	phy_dram_base_t = mmap(NULL, 0xffff, PROT, FLAGS, fd, DRAM_D_BASE);
 	if(phy_dram_base_t == MAP_FAILED){
 		printf("ERROR: dram_t mmap() failed...\n" );
 		return 1;
@@ -114,25 +119,27 @@ int main(){
 	}
 
 	unsigned int i;
-	printf("*************** before init, read dram source **************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_base[i<<2]);
 
 	printf("initializing dram source ...\n");
-	for ( i = 0; i < (BUFF_SIZE/4); i++) phy_dram_base[i<<2] = 0x22222222;
+	for ( i = 0; i < BUFF_SIZE; i++) {
+		phy_dram_base[i<<2] = i;
+	}
 
 	printf("*************** after init, read dram source ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_base[i<<2]);
+	for ( i = 0; i < BUFF_SIZE*2; i++) printf("data[%08d] : %08x\n", i, phy_dram_base[i<<2]);
 
-	printf("*************** before init, read dram target ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_base_t[i<<2]);
 
 	printf("initializing dram target ...\n");
-	for ( i = 0; i < (BUFF_SIZE/4); i++) phy_dram_base_t[i<<2] = 0xDEADBEEF;
+	for ( i = 0; i < BUFF_SIZE; i++) phy_dram_base_t[i<<2] = 0xDEADBEEF;
 
 	printf("*************** after init, read dram target ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_base_t[i<<2]);
+	for ( i = 0; i < BUFF_SIZE*2; i++) printf("data[%08d] : %08x\n", i, phy_dram_base_t[i<<2]);
 	
 	printf("---------------- using dma copy the data of dram source addr to dram target addr --------------------\n");
+	unsigned int mm2s_status = phy_dma_base[MM2S_STATUS_REGISTER >> 2];
+	unsigned int s2mm_status = phy_dma_base[S2MM_STATUS_REGISTER >> 2];
+	printf("mm2s_status : %08x\n", mm2s_status);
+	printf("s2mm_status : %08x\n", s2mm_status);
 
 	printf("Resetting DMA\n");
 	phy_dma_base[MM2S_CONTROL_REGISTER >> 2] = 4;
@@ -147,11 +154,11 @@ int main(){
 	dma_mm2s_status(phy_dma_base);
 
 	printf("writing destination address...\n");
-	phy_dma_base[S2MM_DESTINATION_ADDRESS >> 2] = 0x0f000000;
+	phy_dma_base[S2MM_DESTINATION_ADDRESS >> 2] = DRAM_D_BASE;
 	dma_s2mm_status(phy_dma_base);
 
 	printf("writing source address...\n");
-	phy_dma_base[MM2S_SOURCE_ADDRESS >> 2] = 0x1e000000;
+	phy_dma_base[MM2S_SOURCE_ADDRESS >> 2] = DRAM_S_BASE;
 	dma_mm2s_status(phy_dma_base);
 
 	printf("Starting S2MM channel with all interrupts masked...\n");
@@ -170,8 +177,8 @@ int main(){
 	phy_dma_base[MM2S_LENGTH >> 2] = 32;
 	dma_mm2s_status(phy_dma_base);
 
-	unsigned int mm2s_status = phy_dma_base[MM2S_STATUS_REGISTER >> 2];
-	unsigned int s2mm_status = phy_dma_base[S2MM_STATUS_REGISTER >> 2];
+	printf("mm2s_status : %08x\n", mm2s_status);
+	printf("s2mm_status : %08x\n", s2mm_status);
 
 	printf("mm2s sync...\n");
 	while (!(mm2s_status & 1<<12) || !(mm2s_status & 1<<1))
@@ -188,120 +195,8 @@ int main(){
 
 	printf("mm2s_status : %08x\n", mm2s_status);
 	printf("s2mm_status : %08x\n", s2mm_status);
-	printf("re-read dram from target base to target base + BUFF_SIZE ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_base_t[i<<2]);
-
+	printf("re-read dram from target base to target base + BUFF_SIZE \n");
+	for ( i = 0; i < BUFF_SIZE*2; i++) printf("data[%08d] : %08x\n", i, phy_dram_base_t[i<<2]);
 	
-/*
-	unsigned int *virtual_dram_base_s;
-	virtual_dram_base_s = mmap(NULL, DRAM_MASK, PROT, FLAGS, fd, DRAM_BASE);
-	if(virtual_dram_base_s == MAP_FAILED){
-		printf("ERROR: dram_s mmap() failed...\n" );
-		return 1;
-	}
-	
-	unsigned int *virtual_dram_base_t;
-	virtual_dram_base_t = mmap(NULL, DRAM_MASK, PROT, FLAGS, fd, DRAM_BASE+0x10000);
-	if(virtual_dram_base_t == MAP_FAILED){
-		printf("ERROR: dram_t mmap() failed...\n" );
-		return 1;
-	}
-	
-	unsigned int *virtual_dma_base;
-	virtual_dma_base= mmap(NULL, DMA_MASK, PROT, FLAGS, fd, DMA_BASE);
-	if(virtual_dma_base== MAP_FAILED){
-		printf("ERROR: dma mmap() failed...\n" );
-		return 1;
-	}
-*/
-//	m_axi_base = (volatile unsigned int *)virtual_m_axi_gp0_0_base + (unsigned long) 0x0;
-//	phy_dram_source = (volatile unsigned int *) virtual_dram_base + (unsigned int) 0x0;
-//	phy_dram_target = (volatile unsigned int *)virtual_dram_base + (unsigned int) 0x10000;
-//	phy_dma_base = (volatile unsigned int *)virtual_dma_base;
-
-//	phy_dram_source = (unsigned int *) virtual_dram_base_s;
-//	phy_dram_target = (unsigned int *)virtual_dram_base_t;
-//	phy_dma_base = (unsigned int *)virtual_dma_base;
-/*
-	unsigned int i;
-	printf("*************** before init, read dram source **************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_source[i<<2]);
-
-	printf("initializing dram source ...\n");
-	for ( i = 0; i < (BUFF_SIZE/4); i++) phy_dram_source[i<<2] = 0x22222222;
-
-	printf("*************** after init, read dram source ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_source[i<<2]);
-
-	printf("\n");
-
-	printf("*************** before init, read dram target ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_target[i<<2]);
-
-	printf("initializing dram target ...\n");
-	for ( i = 0; i < (BUFF_SIZE/4); i++) phy_dram_target[i<<2] = 0xDEADBEEF;
-
-	printf("*************** after init, read dram target ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_target[i<<2]);
-	
-	printf("---------------- using dma copy the data of dram source addr to dram target addr --------------------\n");
-
-	printf("Resetting DMA\n");
-	phy_dma_base[MM2S_CONTROL_REGISTER >> 2] = 0x4;
-	phy_dma_base[S2MM_CONTROL_REGISTER >> 2] = 0x4;
-	dma_s2mm_status(phy_dma_base);
-	dma_mm2s_status(phy_dma_base);
-
-	printf("Halting DMA\n");
-	phy_dma_base[MM2S_CONTROL_REGISTER >> 2] = 0x0;
-	phy_dma_base[S2MM_CONTROL_REGISTER >> 2] = 0x0;
-	dma_s2mm_status(phy_dma_base);
-	dma_mm2s_status(phy_dma_base);
-
-	printf("writing destination address...\n");
-	phy_dma_base[S2MM_DESTINATION_ADDRESS >> 2] = 0x10000;
-	dma_s2mm_status(phy_dma_base);
-
-	printf("writing source address...\n");
-	phy_dma_base[MM2S_SOURCE_ADDRESS >> 2] = 0x00;
-	dma_mm2s_status(phy_dma_base);
-
-	printf("Starting S2MM channel with all interrupts masked...\n");
-	phy_dma_base[S2MM_CONTROL_REGISTER >> 2] = 0xF001;
-	dma_s2mm_status(phy_dma_base);
-
-	printf("Starting MM2S channel with all interrupts masked...\n");
-	phy_dma_base[MM2S_CONTROL_REGISTER >> 2] = 0xF001;
-	dma_mm2s_status(phy_dma_base);
-
-	printf("writing s2mm length...\n");
-	phy_dma_base[S2MM_LENGTH >> 2] = 32;
-	dma_s2mm_status(phy_dma_base);
-
-	printf("writing mm2s length...\n");
-	phy_dma_base[MM2S_LENGTH >> 2] = 32;
-	dma_mm2s_status(phy_dma_base);
-
-	unsigned int mm2s_status = phy_dma_base[MM2S_STATUS_REGISTER >> 2];
-	unsigned int s2mm_status = phy_dma_base[S2MM_STATUS_REGISTER >> 2];
-
-	printf("mm2s sync...\n");
-	while (!(mm2s_status & 1<<12) || !(mm2s_status & 1<<1))
-	{
-		//dma_mm2s_status(phy_dma_base);
-		mm2s_status = phy_dma_base[MM2S_STATUS_REGISTER >> 2];
-	}
-	printf("s2mm sync...\n");
-	while (!(s2mm_status & 0x1000) || !(s2mm_status & 0x2))
-	{
-		//dma_s2mm_status(phy_dma_base);
-		s2mm_status = phy_dma_base[S2MM_STATUS_REGISTER >> 2];
-	}
-
-	printf("mm2s_status : %08x\n", mm2s_status);
-	printf("s2mm_status : %08x\n", s2mm_status);
-	printf("re-read dram from target base to target base + BUFF_SIZE ***************\n");
-	for ( i = 0; i < (BUFF_SIZE/4)+4; i++) printf("data[%08d] : %08x\n", i, phy_dram_target[i<<2]);
-*/	
 	return 0;
 }
