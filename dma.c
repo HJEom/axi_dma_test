@@ -122,7 +122,7 @@ int main(){
 
 	printf("initializing dram source ...\n");
 	for ( i = 0; i < BUFF_SIZE*3; i++) {
-		virtual_dram_source[i] = i;
+		virtual_dram_source[i] = i+1;
 	}
 
 	printf("after init, read dram source \n");
@@ -168,11 +168,11 @@ int main(){
 	dma_mm2s_status(virtual_dma_base);
 
 	printf("writing mm2s length...\n");
-	virtual_dma_base[MM2S_LENGTH >> 2] = 40;
+	virtual_dma_base[MM2S_LENGTH >> 2] = 44;
 	dma_mm2s_status(virtual_dma_base);
 
 	printf("writing s2mm length...\n");
-	virtual_dma_base[S2MM_LENGTH >> 2] = 40;
+	virtual_dma_base[S2MM_LENGTH >> 2] = 44;
 	dma_s2mm_status(virtual_dma_base);
 
 	mm2s_status = virtual_dma_base[MM2S_STATUS_REGISTER >> 2];
