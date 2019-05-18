@@ -1,0 +1,48 @@
+A--------------------------------------------
+
+data_source[0] : 00000000
+
+data_source[14] : 406a407c
+data_source[15] : 4a07f3c4
+data_source[16] : 0208ea82
+data_source[17] : f3c20e27
+data_source[18] : f3c42507
+data_source[19] : b2e42807
+data_source[20] : 462e9404
+data_source[21] : f5050e05
+data_source[22] : 95027540
+data_source[23] : b2cd9c02
+
+B--------------------------------------------
+
+dram_dest[0] : 00000000
+
+dram_dest[1] : 80d480f8
+dram_dest[2] : 940fe788
+dram_dest[3] : 0411d504
+dram_dest[4] : e7841c4e
+dram_dest[5] : e7884a0e
+dram_dest[6] : 65c8500e
+dram_dest[7] : 8c5d2808
+dram_dest[8] : ea0a1c0a
+dram_dest[9] : 2a04ea80
+dram_dest[10] : 659b3804
+
+---------------------------------------------
+if (C == A), then myIP is working correctly.
+---------------------------------------------
+
+C = A*2--------------------------------------
+
+0 : 00000000
+
+1  : 80d480f8
+2  : 940fe788
+3  : 0411d504
+4  : e7841c4e (orginal value is 1e7841c4e, but overflow wasn't controlled.)
+5  : e7884a0e
+6  : 65c8500e
+7  : 8c5d2808
+8  : ea0a1c0a
+9  : 2a04ea80
+10 : 659b3804

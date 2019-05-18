@@ -1,0 +1,165 @@
+start using dmainitializing dram source ...
+after init, read dram source 
+data[0] : 00000000
+data[1] : 00000001
+data[2] : 00000002
+data[3] : 00000003
+data[4] : 00000004
+data[5] : 00000005
+data[6] : 00000006
+data[7] : 00000007
+data[8] : 00000008
+data[9] : 00000009
+data[10] : 0000000a
+data[11] : 0000000b
+data[12] : 0000000c
+data[13] : 0000000d
+data[14] : 0000000e
+data[15] : 0000000f
+data[16] : 00000010
+data[17] : 00000011
+data[18] : 00000012
+data[19] : 00000013
+data[20] : 00000014
+data[21] : 00000015
+data[22] : 00000016
+data[23] : 00000017
+data[24] : 00000018
+data[25] : 00000019
+data[26] : 0000001a
+data[27] : 0000001b
+data[28] : 0000001c
+data[29] : 0000001d
+data[30] : 0fec0001
+initializing dram target ...
+after init, read dram target 
+data[0] : deadbeef
+data[1] : deadbeef
+data[2] : deadbeef
+data[3] : deadbeef
+data[4] : deadbeef
+data[5] : deadbeef
+data[6] : deadbeef
+data[7] : deadbeef
+data[8] : deadbeef
+data[9] : deadbeef
+data[10] : deadbeef
+data[11] : deadbeef
+data[12] : deadbeef
+data[13] : deadbeef
+data[14] : deadbeef
+data[15] : deadbeef
+data[16] : deadbeef
+data[17] : deadbeef
+data[18] : deadbeef
+data[19] : deadbeef
+data[20] : deadbeef
+data[21] : deadbeef
+data[22] : deadbeef
+data[23] : deadbeef
+data[24] : deadbeef
+data[25] : deadbeef
+data[26] : deadbeef
+data[27] : deadbeef
+data[28] : deadbeef
+data[29] : deadbeef
+data[30] : 125a126d
+---------------- Using dma, copy the data in dram source to dram target addr --------------------
+Resetting DMA
+Stream to memory-mapped status (0x00000001@0x34): halted
+Memory-mapped to stream status (0x00000001@0x04): halted
+Halting DMA
+Stream to memory-mapped status (0x00000001@0x34): halted
+Memory-mapped to stream status (0x00000001@0x04): halted
+writing destination address...
+Stream to memory-mapped status (0x00000001@0x34): halted
+writing source address...
+Memory-mapped to stream status (0x00000001@0x04): halted
+Starting S2MM channel with all interrupts masked...
+Stream to memory-mapped status (0x00000000@0x34): running
+Starting MM2S channel with all interrupts masked...
+Memory-mapped to stream status (0x00000000@0x04): running
+writing mm2s length...
+Memory-mapped to stream status (0x00000000@0x04): running
+writing s2mm length...
+Stream to memory-mapped status (0x00000000@0x34): running
+mm2s sync...
+s2mm sync...
+re-read the data of dram from dram target address 
+dram_dest[0] : 00000000
+dram_dest[1] : 00000002
+dram_dest[2] : 00000004
+dram_dest[3] : 00000006
+dram_dest[4] : 00000008
+dram_dest[5] : 0000000a
+dram_dest[6] : 0000000c
+dram_dest[7] : 0000000e
+dram_dest[8] : 00000010
+dram_dest[9] : 00000012
+dram_dest[10] : 00000014
+dram_dest[11] : deadbeef
+dram_dest[12] : deadbeef
+dram_dest[13] : deadbeef
+dram_dest[14] : deadbeef
+dram_dest[15] : deadbeef
+dram_dest[16] : deadbeef
+dram_dest[17] : deadbeef
+dram_dest[18] : deadbeef
+dram_dest[19] : deadbeef
+dram_dest[20] : deadbeef
+dram_dest[21] : deadbeef
+dram_dest[22] : deadbeef
+dram_dest[23] : deadbeef
+dram_dest[24] : deadbeef
+dram_dest[25] : deadbeef
+dram_dest[26] : deadbeef
+dram_dest[27] : deadbeef
+dram_dest[28] : deadbeef
+dram_dest[29] : deadbeef
+dram_dest[30] : 125a126d
+Using dma is done! 
+
+start using bram
+read bram
+bram[0] : 00000000
+bram[1] : 00000000
+bram[2] : 00000000
+bram[3] : 00000000
+bram[4] : 00000000
+bram[5] : 00000000
+bram[6] : 00000000
+bram[7] : 00000000
+bram[8] : 00000000
+bram[9] : 00000000
+bram[10] : 00000000
+bram[11] : 00000000
+bram[12] : 00000000
+bram[13] : 00000000
+bram[14] : 00000000
+bram[15] : 00000000
+bram[16] : 00000000
+bram[17] : 00000000
+bram[18] : 00000000
+bram[19] : 00000000
+initializing bram...
+re-read bram
+bram[0] : deadbeef
+bram[1] : deadbeef
+bram[2] : deadbeef
+bram[3] : deadbeef
+bram[4] : deadbeef
+bram[5] : deadbeef
+bram[6] : deadbeef
+bram[7] : deadbeef
+bram[8] : deadbeef
+bram[9] : deadbeef
+bram[10] : 00000000
+bram[11] : 00000000
+bram[12] : 00000000
+bram[13] : 00000000
+bram[14] : 00000000
+bram[15] : 00000000
+bram[16] : 00000000
+bram[17] : 00000000
+bram[18] : 00000000
+bram[19] : 00000000
