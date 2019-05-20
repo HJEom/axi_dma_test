@@ -29,11 +29,11 @@ int main(){
 	}
 
 	printf("start writing data to myIP...\n");
-	myip[0] = 3;
-//	for(int i = 1; i<10; i++){
-//		printf("i = %d\n",i);
-//		myip[i-1] = i;
-//	}
+	//myip[0] = 3;
+	for(int i = 1; i<10; i++){
+		printf("i = %d\n",i);
+		myip[i-1] = i;
+	}
 
 	return 0;
 }
