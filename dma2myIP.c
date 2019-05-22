@@ -18,6 +18,9 @@ This is the reason using the shift in the index of vector.
 #define BRAM_BASE   0x40000000
 #define BRAM_OFFSET 0x1FFF
 
+#define MYIP_BASE   0x43C00000
+#define MYIP_OFFSET 0xFFFF
+
 #define DMA_BASE    0x40400000
 #define DMA_OFFSET  0xFFFF
 
@@ -40,7 +43,9 @@ This is the reason using the shift in the index of vector.
 
 #define PROT (PROT_READ|PROT_WRITE)
 #define FLAGS (MAP_SHARED)
-#define BUFF_SIZE 10
+#define BUFF_SIZE 900
+
+static volatile unsigned int* myip = NULL;
 
 void dma_mm2s_status(unsigned int* dma_virtual_address) {
     unsigned int status = dma_virtual_address[MM2S_STATUS_REGISTER>>2];
@@ -78,27 +83,39 @@ void dma_s2mm_status(unsigned int* dma_virtual_address) {
     printf("\n");
 }
 
-void dram_read(void* virtual_address, int byte_count){
-	char *p = virtual_address;
-	int offset;
-	for (offset = 0; offset < byte_count; offset++) {
-		printf("%02x", p[offset]);
-		if (offset % 4 == 3) { printf(" "); }
-	}
-}
-
 int main(){
-	
-	printf("start using dma");
-	unsigned int* virtual_dram_source = NULL;
-	unsigned int* virtual_dram_dest = NULL;
-	unsigned int* virtual_dma_base = NULL;
 
+	printf("start myip using axi_lite\n");
+	
 	int fd = open("/dev/mem",(O_RDWR|O_SYNC));
 	if(fd == -1){
 		printf("ERROR: can't open \"/dev/mem\"...\n");
 		return 1;
 	}
+
+	myip = mmap(NULL, MYIP_OFFSET, PROT, FLAGS, fd, MYIP_BASE);
+	if(myip == MAP_FAILED){
+		printf("ERROR: myip mmap() failed...\n" );
+		return 1;
+	}
+
+	printf("start writing data to myIP...\n");
+	unsigned int kernel_data_1 = 0x00010203;
+	unsigned int kernel_data_2 = 0x00040506;
+	unsigned int kernel_data_3 = 0x00070809;
+	
+	printf("1 : %08x\n", kernel_data_1);
+	myip[0] = kernel_data_1;
+	printf("2 : %08x\n", kernel_data_2);
+	myip[1] = kernel_data_2;
+	printf("3 : %08x\n", kernel_data_3);
+	myip[2] = kernel_data_3;
+
+
+	printf("start using dma");
+	unsigned int* virtual_dram_source = NULL;
+	unsigned int* virtual_dram_dest = NULL;
+	unsigned int* virtual_dma_base = NULL;
 
 	virtual_dram_source = mmap(NULL, DRAM_SOURCE_OFFSET, PROT, FLAGS, fd, DRAM_SOURCE_BASE);
 	if(virtual_dram_source == MAP_FAILED){
@@ -121,18 +138,18 @@ int main(){
 	unsigned int i;
 
 	printf("initializing dram source ...\n");
-	for ( i = 0; i < BUFF_SIZE*3; i++) {
-		virtual_dram_source[i] = i+1;
+	for ( i = 0; i < BUFF_SIZE+60; i++) {
+		virtual_dram_source[i] = 0x00010203;
 	}
 
 	printf("after init, read dram source \n");
-	for ( i = 0; i < BUFF_SIZE*10; i++) printf("data[%d] : %08x\n", i, virtual_dram_source[i]);
+	for ( i = 0; i < BUFF_SIZE+70; i++) printf("data[%d] : %08x\n", i, virtual_dram_source[i]);
 
 	printf("initializing dram target ...\n");
-	for ( i = 0; i < BUFF_SIZE*3; i++) virtual_dram_dest[i] = 0xDEADBEEF;
+	for ( i = 0; i < BUFF_SIZE; i++) virtual_dram_dest[i] = 0xDEADBEEF;
 
 	printf("after init, read dram target \n");
-	for ( i = 0; i < BUFF_SIZE*10; i++) printf("data[%d] : %08x\n", i, virtual_dram_dest[i]);
+	for ( i = 0; i < BUFF_SIZE+10; i++) printf("data[%d] : %08x\n", i, virtual_dram_dest[i]);
 	
 	printf("---------------- Using dma, copy the data in dram source to dram target addr --------------------\n");
 	
@@ -151,32 +168,19 @@ int main(){
 	dma_s2mm_status(virtual_dma_base);
 	dma_mm2s_status(virtual_dma_base);
 
-	printf("writing destination address...\n");
-	virtual_dma_base[S2MM_DESTINATION_ADDRESS >> 2] = DRAM_DESTINATION_BASE;
-	dma_s2mm_status(virtual_dma_base);
-
 	printf("writing source address...\n");
 	virtual_dma_base[MM2S_SOURCE_ADDRESS >> 2] = DRAM_SOURCE_BASE;
 	dma_mm2s_status(virtual_dma_base);
-
-	printf("Starting S2MM channel with all interrupts masked...\n");
-	virtual_dma_base[S2MM_CONTROL_REGISTER >> 2] = 0xF001;
-	dma_s2mm_status(virtual_dma_base);
 
 	printf("Starting MM2S channel with all interrupts masked...\n");
 	virtual_dma_base[MM2S_CONTROL_REGISTER >> 2] = 0xF001;
 	dma_mm2s_status(virtual_dma_base);
 
 	printf("writing mm2s length...\n");
-	virtual_dma_base[MM2S_LENGTH >> 2] = 44;
+	virtual_dma_base[MM2S_LENGTH >> 2] = 3844;
 	dma_mm2s_status(virtual_dma_base);
 
-	printf("writing s2mm length...\n");
-	virtual_dma_base[S2MM_LENGTH >> 2] = 44;
-	dma_s2mm_status(virtual_dma_base);
-
 	mm2s_status = virtual_dma_base[MM2S_STATUS_REGISTER >> 2];
-	s2mm_status = virtual_dma_base[S2MM_STATUS_REGISTER >> 2];
 
 	printf("mm2s sync...\n");
 	while (!(mm2s_status & 0x1000) || !(mm2s_status & 0x2))
@@ -184,6 +188,21 @@ int main(){
 		dma_mm2s_status(virtual_dma_base);
 		mm2s_status = virtual_dma_base[MM2S_STATUS_REGISTER >> 2];
 	}
+
+	printf("writing destination address...\n");
+	virtual_dma_base[S2MM_DESTINATION_ADDRESS >> 2] = DRAM_DESTINATION_BASE;
+	dma_s2mm_status(virtual_dma_base);
+
+	printf("Starting S2MM channel with all interrupts masked...\n");
+	virtual_dma_base[S2MM_CONTROL_REGISTER >> 2] = 0xF001;
+	dma_s2mm_status(virtual_dma_base);
+
+	printf("writing s2mm length...\n");
+	virtual_dma_base[S2MM_LENGTH >> 2] = 3604;
+	dma_s2mm_status(virtual_dma_base);
+
+	s2mm_status = virtual_dma_base[S2MM_STATUS_REGISTER >> 2];
+
 	printf("s2mm sync...\n");
 	while (!(s2mm_status & 0x1000) || !(s2mm_status & 0x2))
 	{
@@ -191,10 +210,12 @@ int main(){
 		s2mm_status = virtual_dma_base[S2MM_STATUS_REGISTER >> 2];
 	}
 
+
 	printf("re-read the data of dram from dram target address \n");
-	for ( i = 0; i < BUFF_SIZE*10; i++) printf("dram_dest[%d] : %08x\n", i, virtual_dram_dest[i]);
+	for ( i = 0; i < BUFF_SIZE+10; i++) printf("dram_dest[%d] : %08x\n", i, virtual_dram_dest[i]);
 
 	printf("Using dma is done! \n\n");
+/*
 	printf("start using bram\n");
 	
 	unsigned int* virtual_bram = NULL;
@@ -217,6 +238,6 @@ int main(){
 	
 	printf("re-read bram\n");
 	for ( i = 0; i < BUFF_SIZE*2; i++) printf("bram[%d] : %08x\n", i, virtual_bram[i]);
-
+*/
 	return 0;
 }
