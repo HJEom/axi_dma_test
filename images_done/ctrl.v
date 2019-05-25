@@ -5,7 +5,7 @@
 // 
 // Create Date: 2019/05/20 14:36:32
 // Design Name: 
-// Module Name: s_axi
+// Module Name: ctrl
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module s_axi(
+module ctrl(
     input  wire        clk,
     input  wire        rstn,
     input  wire [31:0] s_axi_awaddr,
@@ -42,8 +42,9 @@ module s_axi(
     output wire [1:0]  s_axi_rresp,
     output wire        s_axi_rvalid,
     input  wire        s_axi_rready,
-    output wire        out_valid,
-    output wire [71:0] out_data
+    output wire        o_load_state,
+    output wire [1:0]  o_current_layer,
+    input  wire        i_last           //////////////////////// assign m_axis_tlast
 );
 
 	///////////////////////////////////////////////////////
@@ -54,46 +55,12 @@ module s_axi(
 	reg [1:0] bresp;
 	reg bvalid;
 	reg aw_en;
+	wire wr_en;
 
-	reg [71:0] weights;    // 24-bit * 3 = 72-bit that is the number of kernel elements as each 8-bit
-	reg weights_valid;
-	wire weights_wren;
-	(* ram_style = "{block}" *)
-	reg [23:0] fifo[0:130000];
-	reg [17:0] wr_ptr;
-	reg [17:0] rd_ptr;
-    reg send_w;
-    
 	assign s_axi_awready = awready;
 	assign s_axi_wready = wready;
 	assign s_axi_bresp = bresp;
 	assign s_axi_bvalid = bvalid;
-	assign out_data = weights;
-	assign out_valid = weights_valid;
-
-	always@(posedge clk) begin
-		if(weights_wren) fifo[wr_ptr] = s_axi_wdata[23:0];
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			wr_ptr <= 18'd0;
-		end
-		else begin
-			if(weights_wren) wr_ptr <= wr_ptr + 1'b1;
-			else if(wr_ptr == 18'd130000) wr_ptr <= 18'd0;
-		end
-	end
-	
-	always@(posedge clk) begin
-		if(!rstn) begin
-			rd_ptr <= 18'd0;
-		end
-		else begin
-			if(send_w) rd_ptr <= rd_ptr + 1'b1;
-			else rd_ptr <= 18'd0;
-		end
-	end
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -140,33 +107,31 @@ module s_axi(
 		end
 	end
 
-	assign weights_wren = wready && s_axi_wvalid && awready && s_axi_awvalid;
+	assign wr_en = wready && s_axi_wvalid && awready && s_axi_awvalid;
+
+	reg load_state;
+	reg [1:0] current_layer;
+
+	assign o_load_state = load_state;
+	assign o_current_layer = current_layer;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
-			weights <= 72'd0;
-			weights_valid <= 1'b0;
-			send_w <= 1'b0;
+			load_state <= 1'b0;
+			current_layer <= 2'd0;
 		end
 		else begin
-			if(weights_wren) begin
+			if(wr_en) begin
 				case(awaddr[3:2])
 					2'b00 : begin
-							send_w <= 1'b1;
-							weights <= {weights[47:0], fifo[rd_ptr]};
-							weights_valid <= 1'b0;
-						end
-					2'b01 : begin
-							weights <= {weights[47:0], fifo[rd_ptr]};
-							weights_valid <= 1'b0;
-						end
-					2'b10 : begin 
-							weights <= {weights[47:0], fifo[rd_ptr]};
-							weights_valid <= 1'b1;
+							if(s_axi_wdata[0]) begin
+								{current_layer, load_state} <= s_axi_wdata[3:1];
+								
+							end
 						end
 					default : begin
-							weights_valid <= 1'b0;
-							send_w <= 1'b0;
+							load_state <= 1'b0;
+							current_layer <= 2'd0;
 						end
 				endcase
 			end
@@ -191,6 +156,7 @@ module s_axi(
 		end
 	end
 
+	// dont use the read channel.
 	assign s_axi_arready = 1'b0;
 	assign s_axi_rvalid = 1'b0;
 	assign s_axi_rdata = 32'hDEADBEEF;

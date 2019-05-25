@@ -5,7 +5,7 @@
 // 
 // Create Date: 2019/05/20 14:36:32
 // Design Name: 
-// Module Name: m_axis
+// Module Name: out_buffer
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module m_axis(
+module out_buffer(
     input  wire        clk,
     input  wire        rstn,
     output wire        m_axis_tvalid,

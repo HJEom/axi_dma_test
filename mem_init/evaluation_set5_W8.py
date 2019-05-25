@@ -145,7 +145,13 @@ for test_set_number in range(high_img.shape[0]):
 #    low_img_float32, l_avr, l_var  = standardization(low_img[test_set_number])    # for attemps01 version
 
     high_img_float32 = high_img_float32.astype(np.float32)
-    ow_img_float32 = low_img_float32.astype(np.float32)
+    low_img_float32 = low_img_float32.astype(np.float32)
+
+    high_img_fx = np.around(high_img_float32*64)/64
+    low_img_fx = np.around(low_img_float32*64)/64
+
+    print(high_img_float32[0][0][0][0])
+    print(high_img_fx[0][0][0][0])
 
     test_out_img_f_flt = sess.run(layer3_out_flt, feed_dict={in_img_f : low_img_float32})
     test_out_img_f_fx = sess.run(layer3_out_fx, feed_dict={in_img_f : low_img_float32})
