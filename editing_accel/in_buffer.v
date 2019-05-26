@@ -30,9 +30,21 @@ module in_buffer(
     input  wire        s_axis_tvalid,
     input  wire        i_state,
     input  wire [1:0]  i_layer,
-    input  wire        i_last,    ////////////////////////////// assign m_axis_tlast
+    output [5:0] current_input_channel,
+    output [25:0] data_,
+    output data_valid_,
+    output [23:0] pe_1_,
+    output [23:0] pe_2_,
+    output [23:0] pe_3_,
+    output [23:0] pe_4_,
+    output [23:0] pe_5_,
+    output [23:0] pe_6_,
+    output [23:0] pe_7_,
+    output pe_valid_,
+    output wire        conv_done,
+    output wire        conv_done_1,
+    output wire        conv_done_2
 );
-
 
 	localparam IDLE = 3'd0,
 			WEIGHTS_LOAD = 3'd1,
@@ -47,18 +59,19 @@ module in_buffer(
 
 	localparam WEIGHTS_NUMBER = 38016;
 	localparam BIAS_NUMBER = 129;
-	localparam IMAGES_NUMBER = 49512;
+	localparam IMAGES_NUMBER = 3000;
 
 	wire tready;
 
+
+    
 	reg [2:0] c_state;
 	reg [1:0] img_state;
 
 	(* ram_style = {"block"} *) reg [23:0] w_buffer[0:WEIGHTS_NUMBER-1];
 	(* ram_style = {"block"} *) reg [7:0] b_buffer[0:BIAS_NUMBER-1];
-	(* ram_style = {"block"} *) reg [23:0] img_buffer[0:IMAGES_NUMBER-1];
-	reg [15:0] buffer_wr_ptr;
-	reg [15:0] rd_images_ptr;
+	(* ram_style = {"block"} *) reg [7:0] img_buffer[0:IMAGES_NUMBER-1];
+	reg [17:0] buffer_wr_ptr;
 	reg weights_load_done;
 	reg images_load_done;
 	reg [5:0] i_c;
@@ -66,9 +79,37 @@ module in_buffer(
 	reg [5:0] c_i_c;
 	reg [5:0] c_o_c;
 	reg [5:0] data_cnt;
-    
+    reg [25:0] data;
+    reg data_valid;
+    reg [23:0] pe_1;
+    reg [23:0] pe_2;
+    reg [23:0] pe_3;
+    reg [23:0] pe_4;
+    reg [23:0] pe_5;
+    reg [23:0] pe_6;
+    reg [23:0] pe_7;
+    reg pe_valid;
+    reg [1:0] pixel_cnt;
+	reg [5:0] c_r;
+	reg [3:0] fifo_r;
+	
+	reg conv_d, conv_done_delay, conv_done_delay_delay;
+	reg conv_d_1, conv_done_1_d, conv_done_1_d_d;
+	reg conv_d_2, conv_done_2_d, conv_done_2_d_d;
+	
 	wire wr_en;
-
+    
+    assign data_ = data;
+    assign data_valid_ = data_valid;
+    assign pe_1_ = pe_1;
+    assign pe_2_ = pe_2;
+    assign pe_3_ = pe_3;
+    assign pe_4_ = pe_4;
+    assign pe_5_ = pe_5;
+    assign pe_6_ = pe_6;
+    assign pe_7_ = pe_7;
+    assign pe_valid_ = pe_valid;
+    
 	assign s_axis_tready = tready;
 
 	always@(posedge clk) begin
@@ -89,7 +130,7 @@ module in_buffer(
 					if(weights_load_done) c_state <= IDLE;
 				end
 				IMAGES_LOAD : begin
-					if(images_load_done) c_state <= SEND_DATA;
+					if(images_load_done) c_state <= SEND_WEIGHTS;
 				end
 				SEND_WEIGHTS : begin
 					if(data_cnt == 6'd2) c_state <= SEND_BIAS;
@@ -99,7 +140,7 @@ module in_buffer(
 				end
 				SEND_IMAGES : begin
 					if(conv_done) begin
-						if(i_last) c_state <= IDLE;
+						if(conv_done_2) c_state <= IDLE;
 						else c_state <= SEND_WEIGHTS;
 					end
 				end
@@ -157,14 +198,18 @@ module in_buffer(
 	end
 
 	always@(posedge clk) begin
-		if((c_state == IMAGES_LOAD) && (wr_en)) img_buffer[buffer_wr_ptr] <= s_axis_tdata[23:0];
+		if((c_state == IMAGES_LOAD) && (wr_en)) begin
+			img_buffer[buffer_wr_ptr] <= s_axis_tdata[23:16];
+			img_buffer[buffer_wr_ptr+1] <= s_axis_tdata[15:8];
+			img_buffer[buffer_wr_ptr+2] <= s_axis_tdata[7:0];
+		end
 	end
 
 	assign wr_en = s_axis_tvalid && tready;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
-			buffer_wr_ptr <=16'd0;
+			buffer_wr_ptr <=18'd0;
 		end
 		else begin
 			case(c_state)
@@ -172,9 +217,9 @@ module in_buffer(
 					if(wr_en) buffer_wr_ptr <= buffer_wr_ptr + 1'b1;
 				end
 				IMAGES_LOAD : begin
-					if(wr_en) buffer_wr_ptr <= buffer_wr_ptr + 1'b1;
+					if(wr_en) buffer_wr_ptr <= buffer_wr_ptr + 2'd3;
 				end
-				default : buffer_wr_ptr <= 16'd0;
+				default : buffer_wr_ptr <= 18'd0;
 			endcase
 		end
 	end
@@ -248,7 +293,7 @@ module in_buffer(
 								pe_4 <= {pe_4[15:0], img_buffer[c_o_c*768+16*(c_r+2'd3)+fifo_r+pixel_cnt]};
 								pe_5 <= {pe_5[15:0], img_buffer[c_o_c*768+16*(c_r+3'd4)+fifo_r+pixel_cnt]};
 								pe_6 <= {pe_6[15:0], img_buffer[c_o_c*768+16*(c_r+3'd5)+fifo_r+pixel_cnt]};
-								pe_7 <= {pe_7[15:0], img_buffer[c_o_c*768+16*(c_r+3'd6)+fifo_r_pixel_cnt]};
+								pe_7 <= {pe_7[15:0], img_buffer[c_o_c*768+16*(c_r+3'd6)+fifo_r+pixel_cnt]};
 							end
 						end
 						SEND_IMAGES_LAST_ROW : begin
@@ -335,7 +380,7 @@ module in_buffer(
 			c_i_c <= 6'd0;
 		end
 		else begin
-			if(c_i_c == i_c) c_i_c <= 6'd0;
+			if((c_i_c == i_c) && (conv_done)) c_i_c <= 6'd0;
 			else if(conv_done) c_i_c <= c_i_c + 1'b1;
 		end
 	end
@@ -345,18 +390,58 @@ module in_buffer(
 			c_o_c <= 6'd0;
 		end
 		else begin
-			if(i_last) c_o_c <= 6'd0;
-			else if((c_i_c == i_c) && (conv_done)) c_o_c <= c_o_c + 1'b1;
+			if(conv_done_2) c_o_c <= 6'd0;
+			else if(conv_done_1) c_o_c <= c_o_c + 1'b1;
 		end
 	end
 
+	// is done convolution for 1 input channel.
 	always@(posedge clk) begin
 		if(!rstn) begin
-			conv_done <= 1'b0;
+			conv_d <= 1'b0;
 			conv_done_delay <= 1'b0;
 			conv_done_delay_delay <= 1'b0;
 		end
 		else begin
-			if((data_
+			if((fifo_r == 4'd15) && (pixel_cnt == 2'd2) && (c_r == 6'd42)) conv_done_delay_delay <= 1'b1;
+			else conv_done_delay_delay <= 1'b0;
+			conv_done_delay <= conv_done_delay_delay; 
+			conv_d <= conv_done_delay; 
+		end
+	end
 
+	// is done convolution for all input channel.
+	always@(posedge clk) begin
+		if(!rstn) begin
+			conv_d_1 <= 1'b0;
+			conv_done_1_d <= 1'b0;
+			conv_done_1_d_d <= 1'b0;
+		end
+		else begin
+			if((c_i_c == i_c) && (fifo_r == 4'd15) && (pixel_cnt == 2'd2) && (c_r == 6'd42)) conv_done_1_d_d <= 1'b1;
+			else conv_done_1_d_d <= 1'b0;
+			conv_done_1_d <= conv_done_1_d_d;
+			conv_d_1 <= conv_done_1_d;
+		end
+	end
+
+	// is done convolution for all output channel.
+	always@(posedge clk) begin
+		if(!rstn) begin
+			conv_d_2 <= 1'b0;
+			conv_done_2_d <= 1'b0;
+			conv_done_2_d_d <= 1'b0;
+		end
+		else begin
+			if((c_o_c == o_c) && (c_i_c == i_c) && (fifo_r == 4'd15) && (pixel_cnt == 2'd2) && (c_r == 6'd42)) conv_done_2_d_d <= 1'b1;
+			else conv_done_2_d_d <= 1'b0;
+			conv_done_2_d <= conv_done_2_d_d;
+			conv_d_2 <= conv_done_2_d;
+		end
+	end
+
+    assign conv_done = conv_d;
+    assign conv_done_1 = conv_d_1;
+    assign conv_done_2 = conv_d_2;
+    assign current_input_channel = c_i_c;
 endmodule

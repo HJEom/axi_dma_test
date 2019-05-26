@@ -3,7 +3,6 @@
 
     	module top
 	(
-		output wire [3:0] leds,
 		// Ports of Axi Slave Bus Interface S_AXI
 		input wire  s_axi_aclk,
 		input wire  s_axi_aresetn,
@@ -46,20 +45,63 @@
 		input wire  s_axis_tvalid
 	);
 
-	wire ctrl_o_state, ctrl_i_last;
-	wire [1:0] ctrl_o_layer;
-	wire in_buffer_i_state, in_buffer_i_valid;
-	wire [1:0] in_buffer_i_layer;
-	wire i_last;
+    wire ctrl_o_load_state;
+    wire [1:0] ctrl_o_current_layer;
+    wire ctrl_i_last;
 
-	assign in_buffer_i_state = ctrl_o_state;
-	assign in_buffer_i_layer = ctrl_o_layer;
+    wire ib_i_state;
+    wire [1:0] ib_i_layer;
+    wire [5:0] ib_o_cic;
+    wire [25:0] ib_o_data;
+    wire ib_o_data_valid;
+    wire [23:0] ib_o_pe_1, ib_o_pe_2, ib_o_pe_3, ib_o_pe_4, ib_o_pe_5, ib_o_pe_6, ib_o_pe_7;
+    wire ib_o_pe_valid;
+    wire ib_o_conv_done;    // finish conv for 1 input ch
+    wire ib_o_conv_done_1;  // out
+    wire ib_o_conv_done_2;  // last
+    
+    wire [25:0] conv_i_param;
+    wire conv_i_param_valid;
+    wire [23:0] conv_i_pe_1, conv_i_pe_2, conv_i_pe_3, conv_i_pe_4, conv_i_pe_5, conv_i_pe_6, conv_i_pe_7;
+    wire conv_i_pe_valid;
+    wire [7:0] conv_o_pe_sum_1,  conv_o_pe_sum_2,  conv_o_pe_sum_3,  conv_o_pe_sum_4,  conv_o_pe_sum_5;
+    wire conv_o_pe_sum_valid;
+    
+    wire [7:0] ob_i_pe_sum_1, ob_i_pe_sum_2, ob_i_pe_sum_3, ob_i_pe_sum_4, ob_i_pe_sum_5;
+    wire ob_i_pe_sum_valid;
+    wire [5:0] ob_i_cic;
+    wire ob_i_conv_done, ob_i_conv_done_1, ob_i_conv_done_2;
+    
+    assign ctrl_i_last = ib_o_conv_done_2;
+    assign ib_i_state = ctrl_o_load_state;
+    assign ib_i_layer = ctrl_o_current_layer;
+    assign conv_i_param = ib_o_data;
+    assign conv_i_param_valid = ib_o_data_valid;
+    assign conv_i_pe_1 = ib_o_pe_1;
+    assign conv_i_pe_2 = ib_o_pe_2;
+    assign conv_i_pe_3 = ib_o_pe_3;
+    assign conv_i_pe_4 = ib_o_pe_4;
+    assign conv_i_pe_5 = ib_o_pe_5;
+    assign conv_i_pe_6 = ib_o_pe_6;
+    assign conv_i_pe_7 = ib_o_pe_7;
+    assign conv_i_pe_valid = ib_o_pe_valid;
+    assign ob_i_pe_sum_1 = conv_o_pe_sum_1;
+    assign ob_i_pe_sum_2 = conv_o_pe_sum_2;
+    assign ob_i_pe_sum_3 = conv_o_pe_sum_3;
+    assign ob_i_pe_sum_4 = conv_o_pe_sum_4;
+    assign ob_i_pe_sum_5 = conv_o_pe_sum_5;
+    assign ob_i_pe_sum_valid = conv_o_pe_sum_valid;
+    assign ob_i_cic = ib_o_cic;
+    assign ob_i_conv_done = ib_o_conv_done;
+    assign ob_i_conv_done_1 = ib_o_conv_done_1;
+    assign ob_i_conv_done_2 = ib_o_conv_done_2;
+    
+	ctrl control_state(s_axi_aclk,s_axi_aresetn,s_axi_awaddr,s_axi_awprot,s_axi_awvalid,s_axi_awready,s_axi_wdata,s_axi_wstrb,s_axi_wvalid,s_axi_wready,s_axi_bresp,s_axi_bvalid,s_axi_bready,s_axi_araddr,s_axi_arprot,s_axi_arvalid,s_axi_arready,s_axi_rdata,s_axi_rresp,s_axi_rvalid,s_axi_rready,ctrl_o_load_state, ctrl_o_current_layer, ctrl_i_last);
 
-	ctrl control_state(s_axi_aclk,s_axi_aresetn,s_axi_awaddr,s_axi_awprot,s_axi_awvalid,s_axi_awready,s_axi_wdata,s_axi_wstrb,s_axi_wvalid,s_axi_wready,s_axi_bresp,s_axi_bvalid,s_axi_bready,s_axi_araddr,s_axi_arprot,s_axi_arvalid,s_axi_arready,s_axi_rdata,s_axi_rresp,s_axi_rvalid,s_axi_rready,ctrl_o_state, ctrl_o_layer, ctrl_i_last);
+	in_buffer idata_buffer(s_axis_aclk, s_axis_aresetn, s_axis_tready, s_axis_tdata, s_axis_tstrb, s_axis_tlast, s_axis_tvalid, ib_i_state, ib_i_layer, ib_o_cic,ib_o_data, ib_o_data_valid, ib_o_pe_1, ib_o_pe_2, ib_o_pe_3, ib_o_pe_4, ib_o_pe_5, ib_o_pe_6, ib_o_pe_7, ib_o_pe_valid, ib_o_conv_done, ib_o_conv_done_1, ib_o_conv_done_2);
 
-	in_buffer idata_buffer(s_axis_aclk, s_axis_aresetn, s_axis_tready, s_axis_tdata, s_axis_tstrb, s_axis_tlast, s_axis_tvalid, in_buffer_i_state, in_buffer_i_layer, i_last, leds);
+	conv conv(s_axi_aclk, s_axi_aresetn, conv_i_param, conv_i_param_valid, conv_i_pe_1, conv_i_pe_2, conv_i_pe_3, conv_i_pe_4, conv_i_pe_5, conv_i_pe_6, conv_i_pe_7, conv_i_pe_valid, conv_o_pe_sum_1,  conv_o_pe_sum_2,  conv_o_pe_sum_3,  conv_o_pe_sum_4,  conv_o_pe_sum_5, conv_o_pe_sum_valid);
 
-	conv conv(s_axi_aclk, s_axi_aresetn, w, w_valid, p, p_valid, o, o_valid);
-
-	out_buffer odata_buffer(m_axis_aclk, m_axis_aresetn, m_axis_tvalid, m_axis_tdata, m_axis_tstrb, m_axis_tlast, m_axis_tready, o, o_valid, p_last);
+	out_buffer odata_buffer(m_axis_aclk, m_axis_aresetn, m_axis_tvalid, m_axis_tdata, m_axis_tstrb, m_axis_tlast, m_axis_tready, ob_i_pe_sum_1, ob_i_pe_sum_2, ob_i_pe_sum_3, ob_i_pe_sum_4, ob_i_pe_sum_5, ob_i_pe_sum_valid, ob_i_cic, ob_i_conv_done, ob_i_conv_done_1, ob_i_conv_done_2);
+    
 endmodule

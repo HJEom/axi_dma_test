@@ -33,9 +33,15 @@ module conv(
     input  [23:0] pe_6,
     input  [23:0] pe_7,
     input         pe_valid,
+    output [7:0]  pe_sum_1_wire,
+    output [7:0]  pe_sum_2_wire,
+    output [7:0]  pe_sum_3_wire,
+    output [7:0]  pe_sum_4_wire,
+    output [7:0]  pe_sum_5_wire,
+    output        pe_sum_n_delay
 );
 
-	localparam OFM_PIXELS = 2304;
+
 
 	reg [79:0] params; // [79:8] weights, [7:0] bias
 	wire signed o_pe_11, o_pe_12, o_pe_13;
@@ -51,8 +57,15 @@ module conv(
 
 	wire signed [17:0] pe_sum_1, pe_sum_2, pe_sum_3, pe_sum_4, pe_sum_5;
 	reg [7:0] pe_sum_1_reg, pe_sum_2_reg, pe_sum_3_reg, pe_sum_4_reg, pe_sum_5_reg;
-	reg [8:0] ofm_buffer[0:OFM_PIXELS-1];
+	reg pe_sum_delay;
 
+	assign pe_sum_n_delay = pe_sum_delay;
+	assign pe_sum_1_wire = pe_sum_1_reg;
+	assign pe_sum_2_wire = pe_sum_2_reg;
+	assign pe_sum_3_wire = pe_sum_3_reg;
+	assign pe_sum_4_wire = pe_sum_4_reg;
+	assign pe_sum_5_wire = pe_sum_5_reg;
+	
 	always@(posedge clk) begin
 		if(!rstn) begin
 			params <= 80'd0;
@@ -63,7 +76,6 @@ module conv(
 					2'd0 : params <= {params[55:0], i_param[23:0]};
 					2'd1 : params <= {params[71:0], i_param[7:0]};
 				endcase
-			end
 		end
 	end
 
@@ -156,125 +168,5 @@ module conv(
 			pe_sum_delay <= o_pe_51_valid;
 		end
 	end
-
-	always@(posedge clk) begin
-		if(pe_sum_delay) begin
-			ofm_buffer[wr_ptr] <= pe_sum_1_reg;
-			ofm_buffer[wr_ptr+1] <= pe_sum_2_reg;
-			ofm_buffer[wr_ptr+2] <= pe_sum_3_reg;
-			ofm_buffer[wr_ptr+3] <= pe_sum_4_reg;
-			ofm_buffer[wr_ptr+4] <= pe_sum_5_reg;
-		end
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			wr_ptr <= 12'd0;
-		end
-		else begin
-			if(pe_sum_delay) wr_ptr <= wr_ptr + 1'b1;
-			else if(wr_ptr == 12'd2047) wr_ptr <= 12'd0;
-		end
-	end
-
-	
-
-
-
-
-
-	reg [71:0]  w_reg;
-	reg [71:0]  p_reg;
-	reg         w_done;
-	reg         p_done;
-	reg         conv_done;
-	reg [31:0]  add;
-
-	reg [15:0] tmp_add_1;
-	reg [15:0] tmp_add_2;
-	reg [15:0] tmp_add_3;
-	reg [15:0] tmp_add_4;
-	reg [15:0] tmp_add_5;
-	reg [15:0] tmp_add_6;
-	reg [15:0] tmp_add_7;
-	reg [15:0] tmp_add_8;
-	reg [15:0] tmp_add_9;
-	reg [16:0] tmp_add;
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			w_reg <= 72'd0;
-			w_done <= 1'b0;
-		end
-		else begin
-			if(w_valid) begin
-				w_reg <= w;
-				w_done <= 1'b1;
-			end
-			else begin
-				w_done <= 1'b0;
-			end
-		end
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			p_reg <= 72'd0;
-			p_done <= 1'b0;
-		end
-		else begin
-			if(p_valid) begin
-				p_reg <= p;
-				p_done <= 1'b1;
-			end
-			else begin
-				p_done <= 1'b0;
-			end
-		end
-	end
-
-	always@(*) begin
-		if(w_done && p_done) begin
-			tmp_add_1 = w_reg[7:0]*p_reg[7:0];
-			tmp_add_2 = w_reg[15:8]*p_reg[15:8];
-			tmp_add_3 = w_reg[23:16]*p_reg[23:16];
-			tmp_add_4 = w_reg[31:24]*p_reg[31:24];
-			tmp_add_5 = w_reg[39:32]*p_reg[39:32];
-			tmp_add_6 = w_reg[47:40]*p_reg[47:40];
-			tmp_add_7 = w_reg[55:48]*p_reg[55:48];
-			tmp_add_8 = w_reg[63:56]*p_reg[63:56];
-			tmp_add_9 = w_reg[71:64]*p_reg[71:64];
-			tmp_add = tmp_add_1 + tmp_add_2 + tmp_add_3 + tmp_add_4 + tmp_add_5 + tmp_add_6 + tmp_add_7 + tmp_add_8 + tmp_add_9;
-		end
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			conv_done <= 1'b0;
-		end
-		else begin
-			if(w_done && p_done) begin
-				conv_done <= 1'b1;
-			end
-			else begin
-				conv_done <= 1'b0;
-			end	
-		end
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			add <= 32'd0;
-		end
-		else begin
-			if(w_done && p_done) begin
-				add <= {{(15){1'b0}}, tmp_add};
-			end
-		end
-	end
-
-	assign o_valid = conv_done;
-	assign o = add;
-
 
 endmodule
