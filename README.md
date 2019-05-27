@@ -14,3 +14,5 @@
 # dma2myip.c : dma communicate with myip
 
 ------------------------------------------------------
+
+# editing_accel_03 : convolution for 1 input channel.

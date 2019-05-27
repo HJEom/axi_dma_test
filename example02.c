@@ -91,9 +91,9 @@ void memdump(void* virtual_address, int byte_count) {
 
 int main() {
     int dh = open("/dev/mem", O_RDWR | O_SYNC); // Open /dev/mem which represents the whole physical memory
-    unsigned int* virtual_address = mmap(NULL, 0xffff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x40400000); // Memory map AXI Lite register block
-    unsigned int* virtual_source_address  = mmap(NULL, 0xffff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x0f000000); // Memory map source address
-    unsigned int* virtual_destination_address = mmap(NULL, 0xffff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x1e000000); // Memory map destination address
+    unsigned int* virtual_address = mmap(NULL, 0xfff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x80000000); // Memory map AXI Lite register block
+    unsigned int* virtual_source_address  = mmap(NULL, 0xfffff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x0f000000); // Memory map source address
+    unsigned int* virtual_destination_address = mmap(NULL, 0xfffff, PROT_READ | PROT_WRITE, MAP_SHARED, dh, 0x1e000000); // Memory map destination address
 
     virtual_source_address[0]= 0x11223344; // Write random stuff to source block
     memset(virtual_destination_address, 0, 32); // Clear destination block
@@ -114,11 +114,11 @@ int main() {
     dma_mm2s_status(virtual_address);
 
     printf("Writing destination address\n");
-    dma_set(virtual_address, S2MM_DESTINATION_ADDRESS, 0x0f000000); // Write destination address
+    dma_set(virtual_address, S2MM_DESTINATION_ADDRESS, 0x1e000000); // Write destination address
     dma_s2mm_status(virtual_address);
 
     printf("Writing source address...\n");
-    dma_set(virtual_address, MM2S_START_ADDRESS, 0x0e000000); // Write source address
+    dma_set(virtual_address, MM2S_START_ADDRESS, 0x0f000000); // Write source address
     dma_mm2s_status(virtual_address);
 
     printf("Starting S2MM channel with all interrupts masked...\n");
