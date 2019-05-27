@@ -28,33 +28,43 @@ module pe(
     input signed [7:0] w3,
     input  [23:0] p,
     input         p_valid,
-    output [16:0] o,
+    output [7:0]  o,
     output        o_valid
 );
 
-	wire signed [16:0] ppsum;
-	reg [16:0] psum;
-	reg o_valid_delay;
+	wire signed [15:0] psum;
 
-	assign ppsum = (p_valid) ? w1*p[23:16] + w2*p[15:8] + w3*p[7:0] : 17'd0;
+	reg [15:0] psum_reg;
+	reg p_valid_d;
+	reg [7:0] over_psum;
+
+	assign psum = w1*p[23:16] + w2*p[15:8] + w3*p[7:0];
 
 	always@(posedge clk) begin
 		if(!rstn) begin
-			psum <= 17'd0;
-			o_valid_delay <= 1'b0;
+			psum_reg <= 16'd0;
 		end
 		else begin
-			if(p_valid) begin
-				psum <= ppsum;
-				o_valid_delay <= 1'b1;
-			end
-			else o_valid_delay <= 1'b0;
+			if(p_valid) psum_reg <= psum;
 		end
 	end
 
-	
+	always@(posedge clk) begin
+		if(!rstn) begin
+			p_valid_d <= 1'b0;
+		end
+		else begin
+			p_valid_d <= p_valid;
+		end
+	end
 
-	assign o = psum;
-	assign o_valid = o_valid_delay;
+	always@(*) begin
+		if((p_valid_d) && !(psum_reg[15]) && (psum_reg[14:8] > 0)) over_psum = 8'b01111111;
+		else if((p_valid_d) && (psum_reg[15]) && (psum_reg[14:8] > 0)) over_psum = 8'b10000000;
+		else over_psum = psum_reg;
+	end
+
+	assign o = over_psum;
+	assign o_valid = p_valid_d;
 
 endmodule

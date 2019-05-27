@@ -18,15 +18,15 @@ This is the reason using the shift in the index of vector.
 #define BRAM_BASE   0x40000000
 #define BRAM_OFFSET 0x1FFF
 
-#define MYIP_BASE   0x43C00000
-#define MYIP_OFFSET 0xFFFF
+#define MYIP_BASE   0xA0001000
+#define MYIP_OFFSET 0xFFF
 
-#define DMA_BASE    0x40400000
-#define DMA_OFFSET  0xFFFF
+#define DMA_BASE    0xA0000000
+#define DMA_OFFSET  0xFFF
 
 #define DRAM_SOURCE_BASE        0x0E000000
 #define DRAM_SOURCE_OFFSET      0xFFFF
-#define DRAM_DESTINATION_BASE   0x0F000000
+#define DRAM_DESTINATION_BASE   0x1F000000
 #define DRAM_DESTINATION_OFFSET 0xFFFF
 
 // MM2S REGISTER
@@ -43,7 +43,7 @@ This is the reason using the shift in the index of vector.
 
 #define PROT (PROT_READ|PROT_WRITE)
 #define FLAGS (MAP_SHARED)
-#define BUFF_SIZE 900
+#define BUFF_SIZE 576
 
 static volatile unsigned int* myip = NULL;
 
@@ -100,17 +100,57 @@ int main(){
 	}
 
 	printf("start writing data to myIP...\n");
-	unsigned int kernel_data_1 = 0x00010203;
-	unsigned int kernel_data_2 = 0x00040506;
-	unsigned int kernel_data_3 = 0x00070809;
-	
-	printf("1 : %08x\n", kernel_data_1);
-	myip[0] = kernel_data_1;
-	printf("2 : %08x\n", kernel_data_2);
-	myip[1] = kernel_data_2;
-	printf("3 : %08x\n", kernel_data_3);
-	myip[2] = kernel_data_3;
+	unsigned int ctrl_data = 0x3;
+	int f_1 = -5;
+	int f_2 = 4;
+	int f_3 = -6;
+	int f_4 = -5;
+	int f_5 = 4;
+	int f_6 = -5;
+	int f_7 = -1;
+	int f_8 = -4;
+	int f_9 = 0;
 
+	int kernel_data_1 = ((f_1<<16) & (0x00ff0000))+ ((f_2<<8) & (0x0000ff00))+((f_3) & (0x000000ff));
+	int kernel_data_2 = ((f_4<<16) & (0x00ff0000))+ ((f_5<<8) & (0x0000ff00))+((f_6) & (0x000000ff));
+	int kernel_data_3 = ((f_7<<16) & (0x00ff0000))+ ((f_8<<8) & (0x0000ff00))+((f_9) & (0x000000ff));
+	
+	printf("0 : %08x\n", ctrl_data);
+	myip[0] = ctrl_data;
+//	printf("1 : %08x\n", kernel_data_1);
+//	myip[1] = kernel_data_1;
+	printf("1 : 0x00010101\n");
+	myip[1] = 0x00010101;
+//	printf("2 : %08x\n", kernel_data_2);
+//	myip[2] = kernel_data_2;
+	printf("2 : 0x00010101\n");
+	myip[2] = 0x00010101;
+//	printf("3 : %08x\n", kernel_data_3);
+//	myip[3] = kernel_data_3;
+	printf("3 : 0x00010101\n");
+	myip[3] = 0x00010101;
+
+	int data[2304] = {0,};
+
+	int k = 0;
+	int a;
+
+	FILE *fp = fopen("./i_low_img.txt","r");
+
+	while(!feof(fp)){
+		fscanf(fp, "%d\n", &a);
+		data[k] = a;
+		k++;
+	}
+
+	for(k=0; k<2304; k++){
+		if(k%4==0) data[k] = data[k]<<24;
+		else if(k%4==1) data[k] = data[k]<<16;
+		else if(k%4==2) data[k] = data[k]<<8;
+		else data[k] = data[k-3]+data[k-2]+data[k-1]+data[k];
+	}
+
+	fclose(fp);
 
 	printf("start using dma");
 	unsigned int* virtual_dram_source = NULL;
@@ -138,21 +178,19 @@ int main(){
 	unsigned int i;
 
 	printf("initializing dram source ...\n");
-	for ( i = 0; i < BUFF_SIZE+60; i++) {
-		if(i==0)
-		virtual_dram_source[i] = 0x00010203;
-		else
-		virtual_dram_source[i] = 0x00010101;
+	for ( i = 0; i < BUFF_SIZE; i++) {
+//		virtual_dram_source[i] = data[3*(i+1)];
+		virtual_dram_source[i] = 0x02020202;
 	}
 
 	printf("after init, read dram source \n");
-	for ( i = 0; i < BUFF_SIZE+70; i++) printf("data[%d] : %08x\n", i, virtual_dram_source[i]);
+	for ( i = 0; i < BUFF_SIZE+5; i++) printf("data_source[%d] : %08x\n", i, virtual_dram_source[i]);
 
 	printf("initializing dram target ...\n");
 	for ( i = 0; i < BUFF_SIZE; i++) virtual_dram_dest[i] = 0xDEADBEEF;
 
 	printf("after init, read dram target \n");
-	for ( i = 0; i < BUFF_SIZE+10; i++) printf("data[%d] : %08x\n", i, virtual_dram_dest[i]);
+	for ( i = 0; i < BUFF_SIZE+5; i++) printf("data_dest[%d] : %08x\n", i, virtual_dram_dest[i]);
 	
 	printf("---------------- Using dma, copy the data in dram source to dram target addr --------------------\n");
 	
@@ -180,7 +218,7 @@ int main(){
 	dma_mm2s_status(virtual_dma_base);
 
 	printf("writing mm2s length...\n");
-	virtual_dma_base[MM2S_LENGTH >> 2] = 3848;
+	virtual_dma_base[MM2S_LENGTH >> 2] = 2304;
 	dma_mm2s_status(virtual_dma_base);
 
 	mm2s_status = virtual_dma_base[MM2S_STATUS_REGISTER >> 2];
@@ -201,7 +239,7 @@ int main(){
 	dma_s2mm_status(virtual_dma_base);
 
 	printf("writing s2mm length...\n");
-	virtual_dma_base[S2MM_LENGTH >> 2] = 3608;
+	virtual_dma_base[S2MM_LENGTH >> 2] = 2308;
 	dma_s2mm_status(virtual_dma_base);
 
 	s2mm_status = virtual_dma_base[S2MM_STATUS_REGISTER >> 2];

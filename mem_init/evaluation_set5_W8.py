@@ -42,14 +42,25 @@ def standardization(images):
     images = (images-img_avr)/img_var
     return images, img_avr, img_var
 
+def random_crop(high_images, low_images, mini_batch_size, crop_size):
+    crop_high_img = np.empty((mini_batch_size,crop_size,crop_size,1),dtype=np.uint8)
+    crop_low_img= np.empty((mini_batch_size,crop_size,crop_size,1),dtype=np.uint8)
+    for i in range(mini_batch_size):
+        mini_batch_number = 0
+        h_ = np.random.random_integers(0, high_images[mini_batch_number].shape[0]-crop_size)
+        w_ = np.random.random_integers(0, high_images[mini_batch_number].shape[1]-crop_size)
+        crop_high_img[i] = high_images[mini_batch_number][h_:h_+crop_size, w_:w_+crop_size, :]
+        crop_low_img[i] = low_images[mini_batch_number][h_:h_+crop_size, w_:w_+crop_size, :]
+    return crop_high_img, crop_low_img, crop_high_img/255.0, crop_low_img/255.0
+
 sess = tf.Session()
 saver = tf.train.import_meta_graph(params_path+'./train.ckpt.meta')
 saver.restore(sess, tf.train.latest_checkpoint(params_path))
 
 graph = tf.get_default_graph()
 #################################### print tensor_name
-#for i in graph.get_operations():
-#    print(i.name)
+for i in graph.get_operations():
+    print(i.name)
 
 #################################### print variables
 w1 = graph.get_tensor_by_name("w1:0")
@@ -95,13 +106,6 @@ for i in range(b2_flt.shape[0]):
 for i in range(b3_flt.shape[0]):
     b3_fx[i] = np.around(b3_flt[i]*64)/64
 
-#w1 = var_init("w1",[3,3,1,64])
-#b1 = var_init("b1",[64])
-#w2 = var_init("w2",[3,3,64,64])
-#b2 = var_init("b2",[64])
-#w3 = var_init("w3",[3,3,64,1])
-#b3 = var_init("b3",[1])
-
 #################################### for forward
 in_img_f = graph.get_tensor_by_name("in_img_f:0")
 label_img_f = graph.get_tensor_by_name("label_img_f:0")
@@ -117,6 +121,8 @@ layer3_out_flt = conv2d(layer2_out_flt,w3_flt,b3_flt)
 layer1_out_fx = tf.nn.relu(conv2d(in_img_f,w1_fx,b1_fx))
 layer2_out_fx = tf.nn.relu(conv2d(layer1_out_fx,w2_fx,b2_fx))
 layer3_out_fx = conv2d(layer2_out_fx,w3_fx,b3_fx)
+
+layer1_out_conv = graph.get_tensor_by_name("Conv2D:0")
 
 #################################### results
 #layer3_out = graph.get_tensor_by_name("layer3_out/add:0")
@@ -137,6 +143,25 @@ with tf.device('/cpu:0'):
         high_img[number_img] = (sess.run(high_img[number_img])).reshape(1,high_img[number_img].shape[0],high_img[number_img].shape[1],high_img[number_img].shape[2])
         low_img[number_img] = (sess.run(low_img[number_img])).reshape(1,low_img[number_img].shape[0],low_img[number_img].shape[1],low_img[number_img].shape[2])
 
+    
+        _, _, _, zcu_input_low_img_float32 = random_crop(high_img[0], low_img[0], 1, 48)
+        input_low_img= zcu_input_low_img_float32.astype(np.float32)
+
+        layer1_out_img = sess.run(layer1_out_conv,feed_dict={in_img_f : input_low_img})
+
+i_low_img = open('./i_low_img.txt','w')
+d_low_img = open('./d_low_img.txt','w')
+
+input_low_img = input_low_img.reshape(input_low_img.shape[1],input_low_img.shape[2],1) 
+diff_low_img  = layer1_out_img[:,:,:,1].reshape(layer1_out_img.shape[1],layer1_out_img.shape[2],1)
+
+for h in range(48):
+    for w in range(48):
+        i_low_img.write(str(int(input_low_img[h][w][0]*64))+'\n')
+        d_low_img.write(str(int(diff_low_img[h][w][0]*64))+'\n')
+
+
+'''
 for test_set_number in range(high_img.shape[0]):
     #################################### forward pass to calculate psnr and to save result img.
     high_img_float32 = (high_img[test_set_number]/255.0).astype(np.float32)    # for original version
@@ -149,9 +174,6 @@ for test_set_number in range(high_img.shape[0]):
 
     high_img_fx = np.around(high_img_float32*64)/64
     low_img_fx = np.around(low_img_float32*64)/64
-
-    print(high_img_float32[0][0][0][0])
-    print(high_img_fx[0][0][0][0])
 
     test_out_img_f_flt = sess.run(layer3_out_flt, feed_dict={in_img_f : low_img_float32})
     test_out_img_f_fx = sess.run(layer3_out_fx, feed_dict={in_img_f : low_img_float32})
@@ -177,38 +199,36 @@ for test_set_number in range(high_img.shape[0]):
     high_img[test_set_number] = high_img[test_set_number].reshape(high_img[test_set_number].shape[1], high_img[test_set_number].shape[2], 1)
     cv2.imwrite(tested_image_path + 'label_img_' + str(test_img_list[test_set_number])[:6] + '.jpg', high_img[test_set_number][:,:,:])
 
-fo_param_fx8 = open("./param_fx8.txt", 'w')
+fo_param_fx8 = open("./param_fx8_dec.txt", 'w')
 
 # 1 ~ 576
-for i in range(w1_fx.shape[0]):
-    for ii in range(w1_fx.shape[1]):
-        for iii in range(w1_fx.shape[2]):
-            for iiii in range(w1_fx.shape[3]):
-                fo_param_fx8.write(str(w1_fx[i][ii][iii][iiii]))
+for k_oc in range(w1_fx.shape[3]):
+    for k_ic in range(w1_fx.shape[2]):
+        for k_w in range(w1_fx.shape[1]):
+            for k_h in range(w1_fx.shape[0]):
+                fo_param_fx8.write(str(int(w1_fx[k_h][k_w][k_ic][k_oc]*64)))
                 fo_param_fx8.write('\n')
+    fo_param_fx8.write(str(int(b1_fx[k_oc]*64)))
+    fo_param_fx8.write('\n')
+
 # 577 ~ 37440
-for i in range(w2_fx.shape[0]):
-    for ii in range(w2_fx.shape[1]):
-        for iii in range(w2_fx.shape[2]):
-            for iiii in range(w2_fx.shape[3]):
-                fo_param_fx8.write(str(w2_fx[i][ii][iii][iiii]))
+for k_oc in range(w2_fx.shape[3]):
+    for k_ic in range(w2_fx.shape[2]):
+        for k_w in range(w2_fx.shape[1]):
+            for k_h in range(w2_fx.shape[0]):
+                fo_param_fx8.write(str(int(w2_fx[k_h][k_w][k_ic][k_oc]*64)))
                 fo_param_fx8.write('\n')
+    fo_param_fx8.write(str(int(b2_fx[k_oc]*64)))
+    fo_param_fx8.write('\n')
+
 # 37441 ~ 38016
-for i in range(w3_fx.shape[0]):
-    for ii in range(w3_fx.shape[1]):
-        for iii in range(w3_fx.shape[2]):
-            for iiii in range(w3_fx.shape[3]):
-                fo_param_fx8.write(str(w3_fx[i][ii][iii][iiii]))
+for k_oc in range(w3_fx.shape[3]):
+    for k_ic in range(w3_fx.shape[2]):
+        for k_w in range(w3_fx.shape[1]):
+            for k_h in range(w3_fx.shape[0]):
+                fo_param_fx8.write(str(int(w3_fx[k_h][k_w][k_ic][k_oc]*64)))
                 fo_param_fx8.write('\n')
-# 38017 ~ 38080
-for i in range(b1_fx.shape[0]):
-    fo_param_fx8.write(str(b1_fx[i]))
+    fo_param_fx8.write(str(int(b3_fx[k_oc]*64)))
     fo_param_fx8.write('\n')
-# 38081 ~ 38144
-for i in range(b2_fx.shape[0]):
-    fo_param_fx8.write(str(b2_fx[i]))
-    fo_param_fx8.write('\n')
-# 38145
-for i in range(b3_fx.shape[0]):
-    fo_param_fx8.write(str(b3_fx[i]))
-    fo_param_fx8.write('\n')
+'''
+

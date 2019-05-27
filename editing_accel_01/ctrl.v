@@ -42,9 +42,13 @@ module ctrl(
     output wire [1:0]  s_axi_rresp,
     output wire        s_axi_rvalid,
     input  wire        s_axi_rready,
-    output wire        o_load_state,
+    output wire [1:0]  o_state,
     output wire [1:0]  o_current_layer,
-    input  wire        i_last           //////////////////////// assign m_axis_tlast
+    output wire [5:0]  o_current_ic,
+    output wire [5:0]  o_current_oc,
+    output wire        o_valid,
+    output wire [79:0] bais_weights,
+    output wire        bais_weights_valid
 );
 
 	///////////////////////////////////////////////////////
@@ -109,35 +113,6 @@ module ctrl(
 
 	assign wr_en = wready && s_axi_wvalid && awready && s_axi_awvalid;
 
-	reg load_state;
-	reg [1:0] current_layer;
-
-	assign o_load_state = load_state;
-	assign o_current_layer = current_layer;
-
-	always@(posedge clk) begin
-		if(!rstn) begin
-			load_state <= 1'b0;
-			current_layer <= 2'd0;
-		end
-		else begin
-			if(wr_en) begin
-				case(awaddr[3:2])
-					2'b00 : begin
-							if(s_axi_wdata[0]) begin
-								{current_layer, load_state} <= s_axi_wdata[3:1];
-								
-							end
-						end
-					default : begin
-							load_state <= 1'b0;
-							current_layer <= 2'd0;
-						end
-				endcase
-			end
-		end
-	end
-
 	always@(posedge clk) begin
 		if(!rstn) begin
 			bvalid <= 1'b0;
@@ -156,11 +131,70 @@ module ctrl(
 		end
 	end
 
-	// dont use the read channel.
+	///////////////////////////////////////////////////////
+	/////////// dont use the read channel.
 	assign s_axi_arready = 1'b0;
 	assign s_axi_rvalid = 1'b0;
 	assign s_axi_rdata = 32'hDEADBEEF;
 	assign s_axi_rresp = 2'b00;
 
+	///////////////////////////////////////////////////////
+	/////////// receive wdata
+
+	reg [1:0] c_state, c_layer;
+	reg [5:0] c_ic, c_oc;
+	reg state_valid;
+	reg [79:0] params;
+	reg params_valid_d;
+	wire params_valid_dd;
+
+	assign o_state = c_state;
+	assign o_current_layer = c_layer;
+	assign o_current_ic = c_ic;
+	assign o_current_oc = c_oc;
+	assign o_valid = state_valid;
+	assign bais_weights = params;
+	assign bais_weights_valid = params_valid_d;
+
+	always@(posedge clk) begin
+		if(!rstn) begin
+			c_state <= 2'd0;
+			c_layer <= 2'd0;
+			c_ic <= 6'd0;
+			c_oc <= 6'd0;
+			state_valid <= 1'b0;
+			params <= 80'd0;
+		end
+		else begin
+			if(wr_en) begin
+				case(awaddr[3:2])
+					2'b00 : begin
+						{c_oc, c_ic, c_layer, c_state, state_valid} <= s_axi_wdata[16:0];
+					end
+					2'b01 : params <= {{(48){1'b0}}, s_axi_wdata};
+					2'b10 : params <= {params[55:0], s_axi_wdata[23:0]};
+					2'b11 : params <= {params[55:0], s_axi_wdata[23:0]};
+					default : begin
+						c_state <= 2'd0;
+						c_layer <= 2'd0;
+						c_ic <= 6'd0;
+						c_oc <= 6'd0;
+						state_valid <= 1'b0;
+						params <= 80'd0;
+					end
+				endcase
+			end
+		end
+	end
+
+	assign params_valid_dd = ((wr_en) && (awaddr[3:2] == 2'b11)) ? 1'b1 : 1'b0;
+	always@(posedge clk) begin
+		if(!rstn) begin
+			params_valid_d <= 1'b0;
+		end
+		else begin
+			params_valid_d <= params_valid_dd;
+		end
+	end
 
 endmodule
