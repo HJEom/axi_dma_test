@@ -47,9 +47,10 @@ module in_buffer(
 			IMAGES_LOAD = 2'd1,
 			SEND_DATA = 2'd2;
 
-	localparam SEND_IMAGES_FIRST_ROW = 2'd0,
-			SEND_IMAGES_MIDDLE_ROW = 2'd1,
-			SEND_IMAGES_LAST_ROW = 2'd2;
+	localparam SEND_IMAGES_IDLE = 3'd0,
+	        SEND_IMAGES_FIRST_ROW = 3'd1,
+			SEND_IMAGES_MIDDLE_ROW = 3'd2,
+			SEND_IMAGES_LAST_ROW = 3'd3;
 
 	localparam IMAGES_NUMBER = 2304;
 
@@ -62,7 +63,7 @@ module in_buffer(
 
 	reg img_ce, img_we, tlast_d, tlast_dd;
 	reg [31:0] i_img;
-	reg [11:0] img_addr;
+	reg [11:0] img_addr, img_addr_;
 	wire [39:0] o_img;
 
 	reg [5:0] pixel_cnt;
@@ -122,7 +123,7 @@ module in_buffer(
 
 	assign wr_en = s_axis_tvalid && tready;
 
-	fifo#(8,2304) img_buffer(clk, rstn, img_ce, img_we, img_addr, i_img, o_img);
+	fifo#(8,2304) img_buffer(clk, rstn, img_ce, img_we, img_addr_, i_img, o_img);
 	
 	always@(posedge clk) begin
         if(!rstn) begin
@@ -136,13 +137,24 @@ module in_buffer(
                         else img_addr <= img_addr + 3'd4;
                     end
                 end
-                SEND_DATA : begin
-                    img_addr <= pixel_cnt + row_cnt*48;
-                end
                 default : img_addr <= 12'd0;
             endcase
         end
     end
+    
+    always@(*) begin
+         case(c_state)
+        IMAGES_LOAD : img_addr_ = img_addr;
+        SEND_DATA : begin
+        if((img_state != SEND_IMAGES_IDLE) && (pixel_cnt < 49) && (pixel_cnt > 0)) begin
+            img_addr_ = (pixel_cnt-1) + row_cnt*96;
+        end
+        else img_addr_ = 0;
+        end
+        default : img_addr_ = 12'd0;
+    endcase
+    end
+    
 	always@(*) begin
 			case(c_state)
 				IMAGES_LOAD : begin
@@ -158,9 +170,10 @@ module in_buffer(
 					   end
 				end
 				SEND_DATA : begin
-					img_ce <= 1'b1;
-					img_we <= 1'b0;
-					i_img = s_axis_tdata;
+				    if(!(img_state == SEND_IMAGES_IDLE)) begin
+					   img_ce = 1'b1;
+					   img_we = 1'b0;
+					end
 				end
 				default : begin
 				    img_ce = 1'b0;
@@ -178,12 +191,14 @@ module in_buffer(
 		else begin
 			case(c_state)
 				SEND_DATA : begin
-					if(pixel_cnt == 6'd48) begin
-						pixel_cnt <= 6'd0;
-						if(row_cnt == 6'd15) row_cnt <= 6'd0;
-						else row_cnt <= row_cnt + 1'b1;
+				    if(img_state != SEND_IMAGES_IDLE) begin
+    					if(pixel_cnt == 6'd49) begin
+    						pixel_cnt <= 6'd0;
+    						if(row_cnt == 6'd15) row_cnt <= 6'd0;
+    						else row_cnt <= row_cnt + 1'b1;
+					   end
+					   else pixel_cnt <= pixel_cnt + 1'b1;
 					end
-					else pixel_cnt <= pixel_cnt + 1'b1;
 				end
 			endcase
 		end
@@ -199,7 +214,7 @@ module in_buffer(
 		end
 		else begin
 			if((c_state == SEND_DATA) && (img_state == SEND_IMAGES_FIRST_ROW)) begin
-				if(pixel_cnt == 6'd48) begin		
+				if((pixel_cnt == 6'd48) || (pixel_cnt == 6'd49))begin		
 					pe_1_reg <= 24'd0;
 					pe_2_reg <= {pe_2_reg[15:0], 8'd0};
 					pe_3_reg <= {pe_3_reg[15:0], 8'd0};
@@ -208,14 +223,14 @@ module in_buffer(
 				end	
 				else begin		
 					pe_1_reg <= 24'd0;
-					pe_2_reg <= {pe_2_reg[15:0], o_img[31:24]};
-					pe_3_reg <= {pe_3_reg[15:0], o_img[23:16]};
-					pe_4_reg <= {pe_4_reg[15:0], o_img[15:8]};
-					pe_5_reg <= {pe_5_reg[15:0], o_img[7:0]};
+					pe_2_reg <= {pe_2_reg[15:0], o_img[39:32]};
+					pe_3_reg <= {pe_3_reg[15:0], o_img[31:24]};
+					pe_4_reg <= {pe_4_reg[15:0], o_img[23:16]};
+					pe_5_reg <= {pe_5_reg[15:0], o_img[15:8]};
 				end
 			end
 			else if((c_state == SEND_DATA) && (img_state == SEND_IMAGES_MIDDLE_ROW)) begin
-				if(pixel_cnt == 6'd48) begin		
+				if((pixel_cnt == 6'd48) || (pixel_cnt == 6'd49))begin		
 					pe_1_reg <= {pe_1_reg[15:0], 8'd0};
 					pe_2_reg <= {pe_2_reg[15:0], 8'd0};
 					pe_3_reg <= {pe_3_reg[15:0], 8'd0};
@@ -231,7 +246,7 @@ module in_buffer(
 				end
 			end
 			else if((c_state == SEND_DATA) && (img_state == SEND_IMAGES_LAST_ROW)) begin
-				if(pixel_cnt == 6'd48) begin		
+				if((pixel_cnt == 6'd48)) begin		
 					pe_1_reg <= {pe_1_reg[15:0], 8'd0};
 					pe_2_reg <= {pe_2_reg[15:0], 8'd0};
 					pe_3_reg <= {pe_3_reg[15:0], 8'd0};
@@ -249,30 +264,26 @@ module in_buffer(
 		end
 	end
 
-	always@(posedge clk) begin
-		if(!rstn) begin
-			pe_valid <= 1'b0;
-		end
-		else begin
-			if((c_state == SEND_DATA) && (pixel_cnt > 6'd0)) pe_valid <= 1'b1;
-			else pe_valid <= 1'b0;
-		end
+	always@(*) begin
+			if((c_state == SEND_DATA) && (pixel_cnt > 6'd1)) pe_valid = 1'b1;
+			else pe_valid = 1'b0;
 	end
 
 	always@(posedge clk) begin
 		if(!rstn) begin
-			img_state <= SEND_IMAGES_FIRST_ROW;
+			img_state <= SEND_IMAGES_IDLE;
 		end
 		else begin
 			case(img_state)
-				SEND_IMAGES_FIRST_ROW : if((row_cnt == 6'd0) && (pixel_cnt == 6'd48)) img_state <= SEND_IMAGES_MIDDLE_ROW;
-				SEND_IMAGES_MIDDLE_ROW : if((row_cnt == 6'd14) && (pixel_cnt == 6'd48)) img_state <= SEND_IMAGES_LAST_ROW;
-				SEND_IMAGES_LAST_ROW : if((row_cnt == 6'd15) && (pixel_cnt == 6'd48)) img_state <= SEND_IMAGES_FIRST_ROW;
+			    SEND_IMAGES_IDLE : if(c_state == SEND_DATA) img_state <= SEND_IMAGES_FIRST_ROW;
+				SEND_IMAGES_FIRST_ROW : if((row_cnt == 6'd0) && (pixel_cnt == 6'd49)) img_state <= SEND_IMAGES_MIDDLE_ROW;
+				SEND_IMAGES_MIDDLE_ROW : if((row_cnt == 6'd14) && (pixel_cnt == 6'd49)) img_state <= SEND_IMAGES_LAST_ROW;
+				SEND_IMAGES_LAST_ROW : if((row_cnt == 6'd15) && (pixel_cnt == 6'd49)) img_state <= SEND_IMAGES_IDLE;
 			endcase
 		end
 	end
 
-	assign img_row_done = (pixel_cnt == 6'd48) ? 1'b1 : 1'b0;
+	assign img_row_done = (pixel_cnt == 6'd49) ? 1'b1 : 1'b0;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -292,7 +303,7 @@ module in_buffer(
 			send2dma <= 1'b0;
 		end
 		else begin
-			if((i_current_ic == ic) && (row_cnt == 6'd15) && (pixel_cnt == 6'd48)) send2dma <= 1'b1;
+			if((i_current_ic == ic) && (row_cnt == 6'd15) && (pixel_cnt == 6'd49)) send2dma <= 1'b1;
 			else send2dma <= 1'b0;
 		end
 	end

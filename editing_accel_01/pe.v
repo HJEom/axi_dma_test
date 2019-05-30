@@ -28,17 +28,19 @@ module pe(
     input signed [7:0] w3,
     input  [23:0] p,
     input         p_valid,
-    output [7:0]  o,
+    output signed [15:0]  o,
     output        o_valid
 );
 
 	wire signed [15:0] psum;
-
-	reg [15:0] psum_reg;
+    wire signed [8:0] p1, p2, p3;
+	reg signed [15:0] psum_reg;
 	reg p_valid_d;
-	reg [7:0] over_psum;
 
-	assign psum = w1*p[23:16] + w2*p[15:8] + w3*p[7:0];
+    assign p1 = {1'b0, p[23:16]};
+    assign p2 = {1'b0, p[15:8]};
+    assign p3 = {1'b0, p[7:0]};
+	assign psum = w1*p1 + w2*p2 + w3*p3;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -58,13 +60,7 @@ module pe(
 		end
 	end
 
-	always@(*) begin
-		if((p_valid_d) && !(psum_reg[15]) && (psum_reg[14:8] > 0)) over_psum = 8'b01111111;
-		else if((p_valid_d) && (psum_reg[15]) && (psum_reg[14:8] > 0)) over_psum = 8'b10000000;
-		else over_psum = psum_reg;
-	end
-
-	assign o = over_psum;
+    assign o = psum_reg;
 	assign o_valid = p_valid_d;
 
 endmodule

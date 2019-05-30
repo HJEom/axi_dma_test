@@ -101,36 +101,30 @@ int main(){
 
 	printf("start writing data to myIP...\n");
 	unsigned int ctrl_data = 0x3;
-	int f_1 = -5;
-	int f_2 = 4;
-	int f_3 = -6;
-	int f_4 = -5;
-	int f_5 = 4;
-	int f_6 = -5;
-	int f_7 = -1;
-	int f_8 = -4;
-	int f_9 = 0;
+	int f_1 = 4;
+	int f_2 = 2;
+	int f_3 = 6;
+	int f_4 = 6;
+	int f_5 = 2;
+	int f_6 = -1;
+	int f_7 = 2;
+	int f_8 = -2;
+	int f_9 = -2;
 
-	int kernel_data_1 = ((f_1<<16) & (0x00ff0000))+ ((f_2<<8) & (0x0000ff00))+((f_3) & (0x000000ff));
-	int kernel_data_2 = ((f_4<<16) & (0x00ff0000))+ ((f_5<<8) & (0x0000ff00))+((f_6) & (0x000000ff));
-	int kernel_data_3 = ((f_7<<16) & (0x00ff0000))+ ((f_8<<8) & (0x0000ff00))+((f_9) & (0x000000ff));
+	int kernel_data_1 = ((f_1<<16) & (0x00ff0000))+ ((f_4<<8) & (0x0000ff00))+((f_7) & (0x000000ff));
+	int kernel_data_2 = ((f_2<<16) & (0x00ff0000))+ ((f_5<<8) & (0x0000ff00))+((f_8) & (0x000000ff));
+	int kernel_data_3 = ((f_3<<16) & (0x00ff0000))+ ((f_6<<8) & (0x0000ff00))+((f_9) & (0x000000ff));
 	
 	printf("0 : %08x\n", ctrl_data);
 	myip[0] = ctrl_data;
-//	printf("1 : %08x\n", kernel_data_1);
-//	myip[1] = kernel_data_1;
-	printf("1 : 0x00010101\n");
-	myip[1] = 0x00010101;
-//	printf("2 : %08x\n", kernel_data_2);
-//	myip[2] = kernel_data_2;
-	printf("2 : 0x00010101\n");
-	myip[2] = 0x00010101;
-//	printf("3 : %08x\n", kernel_data_3);
-//	myip[3] = kernel_data_3;
-	printf("3 : 0x00010101\n");
-	myip[3] = 0x00010101;
+	printf("1 : %08x\n", kernel_data_1);
+	myip[1] = kernel_data_1;
+	printf("2 : %08x\n", kernel_data_2);
+	myip[2] = kernel_data_2;
+	printf("3 : %08x\n", kernel_data_3);
+	myip[3] = kernel_data_3;
 
-	int data[2304] = {0,};
+	unsigned int data[2304] = {0,};
 
 	int k = 0;
 	int a;
@@ -179,8 +173,7 @@ int main(){
 
 	printf("initializing dram source ...\n");
 	for ( i = 0; i < BUFF_SIZE; i++) {
-//		virtual_dram_source[i] = data[3*(i+1)];
-		virtual_dram_source[i] = 0x02020202;
+		virtual_dram_source[i] = data[3+4*(i)];
 	}
 
 	printf("after init, read dram source \n");

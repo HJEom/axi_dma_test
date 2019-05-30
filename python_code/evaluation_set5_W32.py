@@ -76,12 +76,12 @@ label_img_f = graph.get_tensor_by_name("label_img_f:0")
 out_img_uint8 = graph.get_tensor_by_name("out_img_uint8:0")
 label_img_uint8 = graph.get_tensor_by_name("label_img_uint8:0")
 
-layer1_out = tf.nn.relu(conv2d(in_img_f,w1,b1))
-layer2_out = tf.nn.relu(conv2d(layer1_out,w2,b2))
-layer3_out = conv2d(layer2_out,w3,b3)
+#layer1_out = tf.nn.relu(conv2d(in_img_f,w1,b1))
+#layer2_out = tf.nn.relu(conv2d(layer1_out,w2,b2))
+#layer3_out = conv2d(layer2_out,w3,b3)
 
 #################################### results
-#layer3_out = graph.get_tensor_by_name("layer3_out/add:0")
+layer3_out = graph.get_tensor_by_name("layer3_out/add:0")
 
 #################################### psnr
 psnr = graph.get_tensor_by_name("psnr/Mean:0")
@@ -107,11 +107,10 @@ for test_set_number in range(high_img.shape[0]):
 #    low_img_float32, l_avr, l_var  = standardization(low_img[test_set_number])    # for attemps01 version
 
     high_img_float32 = high_img_float32.astype(np.float32)
-    ow_img_float32 = low_img_float32.astype(np.float32)
+    low_img_float32 = low_img_float32.astype(np.float32)
 
-    test_out_img_f = sess.run(layer3_out,
-            feed_dict={in_img_f : low_img_float32})
-    test_out_img_uint8 = (test_out_img_f*255.0).astype(np.uint8)    # for original version
+    test_out_img_uint8 = sess.run(layer3_out,
+            feed_dict={in_img_f : low_img[test_set_number]})
 #    test_out_img_uint8 = ((test_out_img_f*l_var)+l_avr).astype(np.uint8)    # for attemps01 version
 
     #################################### calculate psnr

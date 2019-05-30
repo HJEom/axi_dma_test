@@ -31,7 +31,7 @@ module fifo_ofm#(
     input we, // 1 : write, 0 : read
     input [11:0] addr,
     input [DATA_WIDTH*3-1:0] d,
-    output [DATA_WIDTH*4-1:0] q
+    output  [DATA_WIDTH*4-1:0] q
     );
     
     (* ram_style = {"block"} *) reg [DATA_WIDTH-1:0] fifo[0:DATA_DEPTH-1];
@@ -39,11 +39,9 @@ module fifo_ofm#(
     always@(posedge clk) begin
         if(we && ce) begin
 		fifo[addr] <= d[23:16];
-		fifo[addr+48] <= d[15:8];
-		fifo[addr+96] <= d[7:0];
+        fifo[addr+48] <= d[15:8];
+        fifo[addr+96] <= d[7:0];
 	end
     end
-    
-    assign q = (!(we) && ce) ? {fifo[addr], fifo[addr+1], fifo[addr+2], fifo[addr+3]} : {(DATA_WIDTH*4){1'b0}};
-    
+      assign q = (!(we) && ce) ? {fifo[addr], fifo[addr+1], fifo[addr+2], fifo[addr+3]} : {(DATA_WIDTH*4){1'b0}};
 endmodule
