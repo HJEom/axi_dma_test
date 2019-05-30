@@ -43,37 +43,19 @@ module conv(
 
 	reg [71:0] w_reg;
 	reg [7:0]  b_reg;
-
-	wire signed [15:0] o_pe_11;
-	wire signed [15:0] o_pe_12;
-	wire signed [15:0] o_pe_13;
-
-	wire signed [15:0] o_pe_21;
-	wire signed [15:0] o_pe_22;
-	wire signed [15:0] o_pe_23;
-
-	wire signed [15:0] o_pe_31;
-	wire signed [15:0] o_pe_32;
-	wire signed [15:0] o_pe_33;
-	
-	wire signed [9:0] o_pe_11_;
-    wire signed [9:0] o_pe_12_;
-    wire signed [9:0] o_pe_13_;
-                 
-    wire signed [9:0] o_pe_21_;
-    wire signed [9:0] o_pe_22_;
-    wire signed [9:0] o_pe_23_;
-                 
-    wire signed [9:0] o_pe_31_;
-    wire signed [9:0] o_pe_32_;
-    wire signed [9:0] o_pe_33_;
     
+    wire [23:0] i_pe_img[0:4];
+        
+	wire signed [15:0] o_pe_1[0:2];
+	wire signed [15:0] o_pe_2[0:2];
+	wire signed [15:0] o_pe_3[0:2];
+	
 	wire o_pe_11_valid, o_pe_12_valid, o_pe_13_valid;
 	wire o_pe_21_valid, o_pe_22_valid, o_pe_23_valid;
 	wire o_pe_31_valid, o_pe_32_valid, o_pe_33_valid;
 
-	wire signed [10:0] pe_sum_1, pe_sum_2, pe_sum_3;
-	reg signed [7:0] pe_sum_1_, pe_sum_2_, pe_sum_3_;
+    wire signed [7:0] pe_sum_tmp[0:2];
+	wire signed [7:0] pe_sum_1, pe_sum_2, pe_sum_3;
 	reg signed [7:0] pe_sum_1_reg, pe_sum_2_reg, pe_sum_3_reg;
 	reg pe_sum_valid, pe_sum_valid_d;
    
@@ -87,6 +69,8 @@ module conv(
     reg tlast;
     reg send_flg_d, send_flg_dd, send_flg_ddd, img_row_done_d, img_row_done_dd, img_row_done_ddd;
     
+    genvar i, j;
+    
 	always@(posedge clk) begin
 		if(!rstn) begin
 			w_reg <= 72'd0;
@@ -99,54 +83,27 @@ module conv(
 			end
 		end
 	end
+	
+	assign i_pe_img[0] = i_pe_1_row;
+	assign i_pe_img[1] = i_pe_2_row;
+	assign i_pe_img[2] = i_pe_3_row;
+	assign i_pe_img[3] = i_pe_4_row;
+	assign i_pe_img[4] = i_pe_5_row;
+ 
+ ////////////////////////////////////// operate conv with signed w_reg.
+ 
+     for(j = 0; j<3; j=j+1) begin: pe_gen
+ 	   pe pe_1(clk, rstn, w_reg[71:64], w_reg[63:56], w_reg[55:48], i_pe_img[j], i_pe_valid, o_pe_1[j], o_pe_11_valid);
+	   pe pe_2(clk, rstn, w_reg[47:40], w_reg[39:32], w_reg[31:24], i_pe_img[j+1], i_pe_valid, o_pe_2[j], o_pe_12_valid);
+	   pe pe_3(clk, rstn, w_reg[23:16], w_reg[15:8], w_reg[7:0], i_pe_img[j+2], i_pe_valid, o_pe_3[j], o_pe_13_valid);
+	   
+	   manage_overflow pe_sum_column(o_pe_1[j], o_pe_2[j], o_pe_3[j],  o_pe_11_valid, pe_sum_tmp[j]);
+	 end
 
-////////////////////////////////////// operate conv with signed w_reg.
+    assign pe_sum_1 = pe_sum_tmp[0];
+    assign pe_sum_2 = pe_sum_tmp[1];
+    assign pe_sum_3 = pe_sum_tmp[2];
 
-	pe pe_11(clk, rstn, w_reg[71:64], w_reg[63:56], w_reg[55:48], i_pe_1_row, i_pe_valid, o_pe_11, o_pe_11_valid);
-	pe pe_12(clk, rstn, w_reg[47:40], w_reg[39:32], w_reg[31:24], i_pe_2_row, i_pe_valid, o_pe_12, o_pe_12_valid);
-	pe pe_13(clk, rstn, w_reg[23:16], w_reg[15:8], w_reg[7:0], i_pe_3_row, i_pe_valid, o_pe_13, o_pe_13_valid);
-
-	pe pe_21(clk, rstn, w_reg[71:64], w_reg[63:56], w_reg[55:48], i_pe_2_row, i_pe_valid, o_pe_21, o_pe_21_valid);
-	pe pe_22(clk, rstn, w_reg[47:40], w_reg[39:32], w_reg[31:24], i_pe_3_row, i_pe_valid, o_pe_22, o_pe_22_valid);
-	pe pe_23(clk, rstn, w_reg[23:16], w_reg[15:8], w_reg[7:0], i_pe_4_row, i_pe_valid, o_pe_23, o_pe_23_valid);
-
-	pe pe_31(clk, rstn, w_reg[71:64], w_reg[63:56], w_reg[55:48], i_pe_3_row, i_pe_valid, o_pe_31, o_pe_31_valid);
-	pe pe_32(clk, rstn, w_reg[47:40], w_reg[39:32], w_reg[31:24], i_pe_4_row, i_pe_valid, o_pe_32, o_pe_32_valid);
-	pe pe_33(clk, rstn, w_reg[23:16], w_reg[15:8], w_reg[7:0], i_pe_5_row, i_pe_valid, o_pe_33, o_pe_33_valid);
-
-    assign o_pe_11_ = (o_pe_11>>>6);
-    assign o_pe_12_ = (o_pe_12>>>6);
-    assign o_pe_13_ = (o_pe_13>>>6);
-    
-    assign o_pe_21_ = (o_pe_21>>>6);
-    assign o_pe_22_ = (o_pe_22>>>6);
-    assign o_pe_23_ = (o_pe_23>>>6);
-    
-    assign o_pe_31_ = (o_pe_31>>>6);
-    assign o_pe_32_ = (o_pe_32>>>6);
-    assign o_pe_33_ = (o_pe_33>>>6);
-
-	assign pe_sum_1 = o_pe_11_ + o_pe_12_ + o_pe_13_;
-	assign pe_sum_2 = o_pe_21_ + o_pe_22_ + o_pe_23_;
-	assign pe_sum_3 = o_pe_31_ + o_pe_32_ + o_pe_33_;
-
-        
-        always@(*) begin
-            if((o_pe_11_valid) && !(pe_sum_1[10]) && (pe_sum_1[9:8] > 0)) pe_sum_1_ = 8'b01111111;
-            else if((o_pe_11_valid) && (pe_sum_1[10]) && (pe_sum_1[9:8] != 2'b11)) pe_sum_1_ = 8'b10000000;
-            else pe_sum_1_ = {pe_sum_1[10], pe_sum_1[6:0]};
-        end
-        always@(*) begin
-            if((o_pe_21_valid) && !(pe_sum_2[10]) && (pe_sum_2[9:8] > 0)) pe_sum_2_ = 8'b01111111;
-            else if((o_pe_21_valid) && (pe_sum_2[10]) && (pe_sum_2[9:8] != 8'b11111111)) pe_sum_2_ = 8'b10000000;
-            else pe_sum_2_ = {pe_sum_2[10], pe_sum_2[6:0]};
-        end
-                always@(*) begin
-            if((o_pe_31_valid) && !(pe_sum_3[10]) && (pe_sum_3[9:8] > 0)) pe_sum_3_ = 8'b01111111;
-            else if((o_pe_31_valid) && (pe_sum_3[10]) && (pe_sum_3[9:8] != 8'b11111111)) pe_sum_3_ = 8'b10000000;
-            else pe_sum_3_ = {pe_sum_3[10], pe_sum_3[6:0]};
-        end
-        
 	always@(posedge clk) begin
 		if(!rstn) begin
 			pe_sum_1_reg <= 8'd0;
@@ -156,14 +113,14 @@ module conv(
 			pe_sum_valid_d <= 1'b0;
 		end
 		else begin
-			pe_sum_1_reg <= pe_sum_1_;
-			pe_sum_2_reg <= pe_sum_2_;
-			pe_sum_3_reg <= pe_sum_3_;
-			pe_sum_valid <= o_pe_33_valid;
+		    pe_sum_1_reg <= pe_sum_1;
+		    pe_sum_2_reg <= pe_sum_2;
+		    pe_sum_3_reg <= pe_sum_3;
+			pe_sum_valid <= o_pe_11_valid;
 			pe_sum_valid_d <= pe_sum_valid;
 		end
 	end
-	
+
 	fifo_ofm#(8,2304) ofm_buffer(clk, rstn, ofm_ce, ofm_we, ofm_addr, ofm_d, ofm_q);
 
 	always@(*) begin

@@ -60,7 +60,7 @@ module pe(
 		end
 	end
 
-    assign o = psum_reg;
+    assign o = (psum_reg>>>6);
 	assign o_valid = p_valid_d;
 
 endmodule
