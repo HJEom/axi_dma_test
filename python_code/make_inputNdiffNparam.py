@@ -32,6 +32,7 @@ def get_all_dataset(image_path, image_list):
     print("\ngetting all dataset for train and test...")
     for i in range(len(image_list)):
         image = cv2.imread(image_path+'/'+image_list[i])
+        image = cv2.resize(image,(48,48))
         high_images[i] = tf.reshape(tf.image.rgb_to_grayscale(image),[image.shape[0],image.shape[1],1])
         low_images[i] = tf.image.resize_images(tf.image.resize_images(tf.reshape(tf.image.rgb_to_grayscale(image),[image.shape[0],image.shape[1],1]), (int(image.shape[0]/2),int(image.shape[1]/2)), method=tf.image.ResizeMethod.BICUBIC), (image.shape[0],image.shape[1]), method=tf.image.ResizeMethod.BICUBIC)
     return high_images, low_images
