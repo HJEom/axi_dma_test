@@ -15,7 +15,6 @@ module sram #(parameter ADDR_WIDTH = 8, DATA_WIDTH = 8, DEPTH = 256) (
         if(ce) begin
         if(i_write) begin
             memory_array[i_addr] <= i_data;
-            memory_array[i_addr+3] <= i_data;
         end
         else begin
             o_data <= memory_array[i_addr];
