@@ -6,13 +6,12 @@
 
 ------------------------------------------------------
 
-# example01.c : DMA read and write for S.G mode.
-# example02.c : DMA read and write for inturrupt mode
+# ref_axi : reference axi file. 
 
 ------------------------------------------------------
 
-# dma2myip.c : dma communicate with myip
+# c_code : c code to communicate with axi and to run dma.
 
 ------------------------------------------------------
 
-# editing_accel_03 : convolution for 1 input channel.
+# python_code : make the data that needs to run accel.
