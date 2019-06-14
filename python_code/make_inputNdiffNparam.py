@@ -168,20 +168,39 @@ for test_set_number in range(1):
 
 i_low_img = open(tested_image_path + 'i_low_img.txt','w')
 d_low_img = open(tested_image_path + 'd_low_img.txt','w')
-param = open(tested_image_path + 'param.txt','w')
+param_w = open(tested_image_path + 'param_w.txt','w')
+param_b = open(tested_image_path + 'param_b.txt','w')
+
+for h in range(12):
+	for w in range(48):
+		for h_partial in range(4):
+			i_low_img.write(str(int(test_low_img_uint8[h_partial+h*4][w][0]))+'\n')
 
 for h in range(48):
     for w in range(48):
-        i_low_img.write(str(int(test_low_img_uint8[h][w][0]))+'\n')
         d_low_img.write(str(int(test_out_img_uint8[h][w][0]))+'\n')
 
 for k_oc in range(w1_fx.shape[3]):
     for k_ic in range(w1_fx.shape[2]):
-        for k_w in range(w1_fx.shape[1]):
-            for k_h in range(w1_fx.shape[0]):
-                param.write(str(int(w1_fx[k_h][k_w][k_ic][k_oc]*64))+'\n')
+        for k_h in range(w1_fx.shape[1]):
+            for k_w in range(w1_fx.shape[0]):
+                param_w.write(str(int(w1_fx[k_h][k_w][k_ic][k_oc]*64))+'\n')
 
-#################################################################################################################################################################
-#####################  test is done.
+for k_oc in range(w2_fx.shape[3]):
+    for k_ic in range(w2_fx.shape[2]):
+        for k_h in range(w2_fx.shape[1]):
+            for k_w in range(w2_fx.shape[0]):
+                param_w.write(str(int(w2_fx[k_h][k_w][k_ic][k_oc]*64))+'\n')
 
+for k_oc in range(w3_fx.shape[3]):
+    for k_ic in range(w3_fx.shape[2]):
+        for k_h in range(w3_fx.shape[1]):
+            for k_w in range(w3_fx.shape[0]):
+                param_w.write(str(int(w3_fx[k_h][k_w][k_ic][k_oc]*64))+'\n')
 
+for k_oc in range(b1_fx.shape[0]):
+	param_b.write(str(int(b1_fx[k_oc]*64))+'\n')
+for k_oc in range(b2_fx.shape[0]):
+	param_b.write(str(int(b2_fx[k_oc]*64))+'\n')
+for k_oc in range(b3_fx.shape[0]):
+	param_b.write(str(int(b3_fx[k_oc]*64))+'\n')

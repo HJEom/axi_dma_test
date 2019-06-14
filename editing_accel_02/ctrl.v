@@ -156,6 +156,9 @@ module ctrl(
 						else if((c_state == IDLE) & (s_axi_wdata[1:0] == 2'b10)) begin
 							c_state <= IMAGE_LOAD;
 						end
+						else if((c_state == IDLE) & (s_axi_wdata[1:0] == 2'b11)) begin
+							c_state <= START_ACCEL;
+						end
 					end
 					default : c_state <= 2'd0;
 				endcase

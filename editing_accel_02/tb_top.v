@@ -58,17 +58,19 @@ module tb_top;
 		reg clk;
 		reg rstn;
 		integer j, i;
-		integer fd_w, fo, fo_int;
-		integer i_data1, i_data2, i_data3, i_data4;
+		integer fd_param_w, fd_param_b;
+		integer fd_i_image;
+		
+		integer scan_w1, scan_w2, scan_w3, scan_b, scan_i_image1, scan_i_image2, scan_i_image3, scan_i_image4;
 		
 top top        (clk, rstn,s_axi_awaddr,s_axi_awprot, s_axi_awvalid,s_axi_awready, s_axi_wdata, s_axi_wstrb,s_axi_wvalid, s_axi_wready, s_axi_bresp,  s_axi_bvalid,s_axi_bready, s_axi_araddr, s_axi_arprot, s_axi_arvalid,s_axi_arready,s_axi_rdata, s_axi_rresp, s_axi_rvalid, s_axi_rready, clk,rstn,m_axis_tvalid,m_axis_tdata,m_axis_tstrb,m_axis_tlast,m_axis_tready,clk,rstn, s_axis_tready, s_axis_tdata,s_axis_tstrb,s_axis_tlast,s_axis_tvalid);
 		always #5 clk = ~clk;
 		
     initial begin
     
-//        fo = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/odata.txt","w");
-//        fo_int = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/odata_int.txt","w");
- //       fd_w = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/i_low_img.txt","r");
+        fd_param_w = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/param_w.txt","r");
+        fd_param_b = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/param_b.txt","r");
+        fd_i_image = $fopen("/home/eom/files/my_git/my_accel/axi_dma_test/test_file/i_low_img.txt","r");
     
         clk = 0;
         rstn = 0;
@@ -84,62 +86,118 @@ top top        (clk, rstn,s_axi_awaddr,s_axi_awprot, s_axi_awvalid,s_axi_awready
         
         m_axis_tready=0;
         
-        @(posedge clk) 
+        @(posedge clk);
         #2 rstn = 1;
-        for (j=0; j<1; j=j+1) begin
-        /////////////////////// wdata 1
-        repeat(4) @(posedge clk);
-         s_axi_awaddr = 0;
+        repeat(2) @(posedge clk);
+        
+        
+        // send control signal to ctrl module
+        s_axi_awaddr = 0;
+        s_axi_awvalid = 1;
+        @(posedge clk)
+        
+        s_axi_wdata=1;
+        s_axi_wvalid=1;
+        repeat(3) @(posedge clk)
+        if(s_axi_bvalid == 1) begin
+           s_axi_wvalid = 0;
+           s_axi_awvalid = 0; 
+        end;
+        
+        s_axi_wvalid = 0;
+        s_axi_awvalid = 0;
+        @(posedge clk);
+        
+        // load parameter
+        s_axis_tvalid = 1;
+        for(i=0; i<12672; i=i+1) begin
+            scan_w1 = $fscanf(fd_param_w, "%d\n", s_axis_tdata[23:16]);
+            scan_w2 = $fscanf(fd_param_w, "%d\n", s_axis_tdata[15:8]);
+            scan_w3 = $fscanf(fd_param_w, "%d\n", s_axis_tdata[7:0]);
+            if(i<129) scan_b = $fscanf(fd_param_b, "%d\n", s_axis_tdata[31:24]);
+            if(i==12671) s_axis_tlast = 1;
+            @(posedge clk);
+        end
+        
+        s_axis_tlast = 0;
+        s_axis_tvalid = 0;
+        @(posedge clk);
+        
+        // send control signal to ctrl module
+        s_axi_awaddr = 0;
         s_axi_awvalid = 1;
         @(posedge clk);
-         
-        s_axi_wvalid =1;
-        s_axi_wdata = 1;
-        repeat(2)@(posedge clk);
-         s_axi_wvalid = 0;
+        
+        s_axi_wdata=2;
+        s_axi_wvalid=1;
+        repeat(3) @(posedge clk)
+        if(s_axi_bvalid == 1) begin
+           s_axi_wvalid = 0;
+           s_axi_awvalid = 0; 
+        end;
+        
+        s_axi_wvalid = 0;
         s_axi_awvalid = 0;
-        
-        repeat(4)@(posedge clk);
-        for (i=0; i<576; i=i+1)begin
         @(posedge clk);
-        i_data1 = $fscanf(fd_w, "%d\n",s_axis_tdata[31:24]);
-        i_data2 = $fscanf(fd_w, "%d\n",s_axis_tdata[23:16]);
-        i_data3 = $fscanf(fd_w, "%d\n",s_axis_tdata[15:8]);
-        i_data4 = $fscanf(fd_w, "%d\n",s_axis_tdata[7:0]);
+        
+        // load input image
         s_axis_tvalid = 1;
-        if(i==575) s_axis_tlast = 1;
+        for(j=0; j<12; j=j+1) begin
+        for(i=0; i<48; i=i+1) begin
+            if(j == 0) s_axis_tdata = 32'h03020100;
+            else if(j == 1) s_axis_tdata = 32'h07060504;
+            else if(j == 2) s_axis_tdata = 32'h0b0a0908;
+            else if(j == 3) s_axis_tdata = 32'h0f0e0d0c;
+            else if(j == 4) s_axis_tdata = 32'h13121110;
+            else if(j == 5) s_axis_tdata = 32'h17161514;
+            else if(j == 6) s_axis_tdata = 32'h1b1a1918;
+            else if(j == 7) s_axis_tdata = 32'h1f1e1d1c;
+            else if(j == 8) s_axis_tdata = 32'h23222120;
+            else if(j == 9) s_axis_tdata = 32'h27262524;
+            else if(j == 10) s_axis_tdata = 32'h2b2a2928;
+            else if(j == 11) s_axis_tdata = 32'h2f2e2d2c;
+            if(i == 47 & j == 11) s_axis_tlast = 1;
+            @(posedge clk);
         end
-        @(posedge clk);
-        s_axis_tvalid = 0;
-         s_axis_tlast = 0;
-         repeat(4)@(posedge clk);
-         for (i=0; i<576; i=i+1)begin
-         @(posedge clk);
-          m_axis_tready = 1;
-         end
-         @(posedge clk);
+        end
+//        for(j=0; j<12; j=j+1) begin
+//        for(i=0; i<48; i=i+1) begin
+//            scan_i_image1 = $fscanf(fd_i_image, "%d\n", s_axis_tdata[7:0]);
+//            scan_i_image2 = $fscanf(fd_i_image, "%d\n", s_axis_tdata[15:8]);
+//            scan_i_image3 = $fscanf(fd_i_image, "%d\n", s_axis_tdata[23:16]);
+//            scan_i_image4 = $fscanf(fd_i_image, "%d\n", s_axis_tdata[31:24]);
+//            if(i == 47 & j == 11) s_axis_tlast = 1;
+//            @(posedge clk);
+//        end
+//        end
         
-        repeat(2000) @(posedge clk);
-        end
-        $fclose(fd_w);
-        $fclose(fo);
+        s_axis_tlast = 0;
+        s_axis_tvalid = 0;
+        @(posedge clk);
+        
+        // send control signal to ctrl module
+        s_axi_awaddr = 0;
+        s_axi_awvalid = 1;
+        @(posedge clk);
+        
+        s_axi_wdata=3;
+        s_axi_wvalid=1;
+        repeat(3) @(posedge clk)
+        if(s_axi_bvalid == 1) begin
+           s_axi_wvalid = 0;
+           s_axi_awvalid = 0; 
+        end;
+        
+        s_axi_wvalid = 0;
+        s_axi_awvalid = 0;
+        @(posedge clk);
+        
+        
+        repeat(5000) @(posedge clk);
+        
+        
         $finish;
         
     end
-
-always@(posedge clk) begin
-    if(m_axis_tvalid) begin
-        $fwrite(fo,"%02x\n", m_axis_tdata[31:24]);
-        $fwrite(fo,"%02x\n", m_axis_tdata[23:16]);
-        $fwrite(fo,"%02x\n", m_axis_tdata[15:8]);
-        $fwrite(fo,"%02x\n", m_axis_tdata[7:0]);
-        $fwrite(fo_int,"%d\n", m_axis_tdata[31:24]);
-                $fwrite(fo_int,"%d\n", m_axis_tdata[23:16]);
-                $fwrite(fo_int,"%d\n", m_axis_tdata[15:8]);
-                $fwrite(fo_int,"%d\n", m_axis_tdata[7:0]);
-        
-        end
-end
-
 
 endmodule

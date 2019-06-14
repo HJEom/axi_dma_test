@@ -1,4 +1,4 @@
-module bram #(parameter ADDR_WIDTH = 6, DATA_WIDTH = 8, DEPTH = 48) (
+module bram#(parameter ADDR_WIDTH = 14, DATA_WIDTH = 24, DEPTH = 12672) (
     input wire 			clk,
     input wire 			ce,
     input wire 			we,
