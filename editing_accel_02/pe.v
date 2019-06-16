@@ -23,44 +23,39 @@
 module pe(
     input         clk,
     input         rstn,
-    input signed [7:0] w1,
-    input signed [7:0] w2,
-    input signed [7:0] w3,
-    input  [23:0] p,
-    input         p_valid,
-    output signed [15:0]  o,
-    output        o_valid
+    input signed [7:0]  w1,
+    input signed [7:0]  w2,
+    input signed [7:0]  w3,
+    input        [23:0] p,
+    input               p_valid,
+    output signed [10:0] o,
+    output              o_valid
 );
 
-	wire signed [15:0] psum;
-    wire signed [8:0] p1, p2, p3;
-	reg signed [15:0] psum_reg;
+	wire signed [8:0] p1, p2, p3;
+	wire signed [16:0] psum;
+	reg signed [16:0] psum_reg;
 	reg p_valid_d;
 
-    assign p1 = {1'b0, p[23:16]};
-    assign p2 = {1'b0, p[15:8]};
-    assign p3 = {1'b0, p[7:0]};
+	assign p1 = {1'b0, p[23:16]};
+	assign p2 = {1'b0, p[15:8]};
+	assign p3 = {1'b0, p[7:0]};
 	assign psum = w1*p1 + w2*p2 + w3*p3;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
-			psum_reg <= 16'd0;
-		end
-		else begin
-			if(p_valid) psum_reg <= psum;
-		end
-	end
-
-	always@(posedge clk) begin
-		if(!rstn) begin
+			psum_reg <= 17'd0;
 			p_valid_d <= 1'b0;
 		end
 		else begin
+			if(p_valid) begin
+				psum_reg <= psum;
+			end
 			p_valid_d <= p_valid;
 		end
 	end
 
-    assign o = (psum_reg>>>6);
+	assign o = (psum_reg>>>6);
 	assign o_valid = p_valid_d;
 
 endmodule

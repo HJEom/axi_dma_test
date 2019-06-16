@@ -8,22 +8,31 @@ def twocomp(hexstr, bits):
 		value -= 1<<bits
 	return value
 
-f = open("../test_file/odata.txt","r")
+f = open("../test_file/o_low_img.txt","r")
 
 lines = f.read().splitlines()
 
-o_img = np.empty((48,48,1))
-tmp = []
+tmp = np.asarray(lines)
 
-for h in range(48):
+tmp = tmp.reshape(12,48,4)
+
+print(tmp)
+print(tmp.shape)
+
+o_img = np.empty((48,48,1), dtype=np.uint8)
+
+for h in range(12):
 	for w in range(48):
-		tmp.append(str('0x')+str(lines[w+h*48]))
+		for h_p in range(4):
+			o_img[h_p+h*4][w][0] = tmp[h][w][h_p]
 
-for h in range(48):
-	for w in range(48):
-		o_img[h][w] = twocomp(tmp[w+h*48],8)
+#for h in range(48):
+#	for w in range(48):
+#		tmp.append(str('0x')+str(lines[w+h*48]))
 
-o_img = o_img.reshape(48,48,1).astype(np.uint8)
-print(o_img[0][0][0])
+#for h in range(48):
+#	for w in range(48):
+#		o_img[h][w] = twocomp(tmp[w+h*48],8)
 
-cv.imwrite('../test_file/odata_image.jpg', o_img)
+
+cv.imwrite('../test_file/o_low_img.jpg', o_img)

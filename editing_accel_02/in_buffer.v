@@ -38,7 +38,6 @@ module in_buffer(
     output wire [23:0] pdata4,
     output wire [23:0] pdata5,
     output wire        pdata_valid
-//    input  wire        conv_done
 );
 
 	localparam IDLE = 2'd0, PARAM_LOAD = 2'd1, IMAGE_LOAD = 2'd2, START_ACCEL = 2'd3;
@@ -63,8 +62,7 @@ module in_buffer(
     
 	assign o_state_cnvt = state_convert;
 
-//	assign state_convert = ((s_axis_tlast) | (conv_done));
-	assign state_convert = (s_axis_tlast);
+	assign state_convert = ((s_axis_tlast) | (conv_done));
 
 	///////////////////////////////////////////////////////
 	/////////// 
@@ -389,7 +387,7 @@ for (i=0; i<IMAGE_ROW; i=i+1) begin
 end
 
 	//////////////////////////// generate bram address
-	reg [5:0] pixel_cnt;
+	reg [5:0] pixel_cnt, pixel_cnt_d, pixel_cnt_dd;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -434,6 +432,26 @@ end
 			endcase
 		end
 	end
+
+	always@(posedge clk) begin
+		if(!rstn) begin
+			pixel_cnt_d <= 6'd0;
+			pixel_cnt_dd <= 6'd0;
+		end
+		else begin
+			case(i_state)
+				START_ACCEL : begin
+					pixel_cnt_d <= pixel_cnt;
+					pixel_cnt_dd <= pixel_cnt_d;
+				end
+				default: begin
+					pixel_cnt_d <= 6'd0;
+					pixel_cnt_dd <= 6'd0;
+				end
+			endcase
+		end
+	end
+
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -496,7 +514,7 @@ end
 	assign pdata3 = pixel_data3;
 	assign pdata4 = pixel_data4;
 	assign pdata5 = pixel_data5;
-	assign pdata_valid = pixel_valid_d;
+	assign pdata_valid = pixel_valid;
 
 	always@(posedge clk) begin
 		if(!rstn) begin
@@ -512,7 +530,7 @@ end
 					case(img_state)
 						SEND_IMAGES_FIRST_ROW : begin
 							pixel_data1 <= 24'd0;
-							if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+							if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 								pixel_data2 <= {pixel_data2[15:0], 8'd0};
 								pixel_data3 <= {pixel_data3[15:0], 8'd0};
 								pixel_data4 <= {pixel_data4[15:0], 8'd0};
@@ -528,7 +546,7 @@ end
 						SEND_IMAGES_MIDDLE_ROW : begin
 							case(row_cnt)
 								4'd1 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -544,7 +562,7 @@ end
 									end
 								end
 								4'd2 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -560,7 +578,7 @@ end
 									end
 								end
 								4'd3 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -576,7 +594,7 @@ end
 									end
 								end
 								4'd4 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -592,7 +610,7 @@ end
 									end
 								end
 								4'd5 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -608,7 +626,7 @@ end
 									end
 								end
 								4'd6 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -624,7 +642,7 @@ end
 									end
 								end
 								4'd7 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -640,7 +658,7 @@ end
 									end
 								end
 								4'd8 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -656,7 +674,7 @@ end
 									end
 								end
 								4'd9 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -672,7 +690,7 @@ end
 									end
 								end
 								4'd10 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -688,7 +706,7 @@ end
 									end
 								end
 								4'd11 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -704,7 +722,7 @@ end
 									end
 								end
 								4'd12 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -720,7 +738,7 @@ end
 									end
 								end
 								4'd13 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -736,7 +754,7 @@ end
 									end
 								end
 								4'd14 : begin
-									if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+									if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 										pixel_data1 <= {pixel_data1[15:0], 8'd0};
 										pixel_data2 <= {pixel_data2[15:0], 8'd0};
 										pixel_data3 <= {pixel_data3[15:0], 8'd0};
@@ -754,18 +772,29 @@ end
 							endcase
 						end
 						SEND_IMAGES_LAST_ROW : begin
-							pixel_data5 <= 24'd0;
-							if((pixel_cnt == 0) | (pixel_cnt == 49)) begin
+							if((pixel_cnt_d == 0) | (pixel_cnt_dd == 48)) begin
 								pixel_data1 <= {pixel_data1[15:0], 8'd0};
 								pixel_data2 <= {pixel_data2[15:0], 8'd0};
 								pixel_data3 <= {pixel_data3[15:0], 8'd0};
 								pixel_data4 <= {pixel_data4[15:0], 8'd0};
+								pixel_data5 <= {pixel_data5[15:0], 8'd0};
 							end
 							else begin
 								pixel_data1 <= {pixel_data1[15:0], i_odata[44]};
 								pixel_data2 <= {pixel_data2[15:0], i_odata[45]};
 								pixel_data3 <= {pixel_data3[15:0], i_odata[46]};
 								pixel_data4 <= {pixel_data4[15:0], i_odata[47]};
+								pixel_data5 <= {pixel_data5[15:0], 8'd0};
+							end
+							
+						end
+						default : begin
+							if(pixel_cnt_dd == 48) begin
+								pixel_data1 <= {pixel_data1[15:0], 8'd0};
+								pixel_data2 <= {pixel_data2[15:0], 8'd0};
+								pixel_data3 <= {pixel_data3[15:0], 8'd0};
+								pixel_data4 <= {pixel_data4[15:0], 8'd0};
+								pixel_data5 <= {pixel_data5[15:0], 8'd0};
 							end
 							
 						end
@@ -785,10 +814,16 @@ end
 			case(i_state)
 				START_ACCEL : begin
 					if(img_state != SEND_IMAGES_IDLE) begin
-						if((pixel_cnt > 0) & (pixel_cnt < 49)) pixel_valid <= 1'b1;
+						if(pixel_cnt_dd == 49) pixel_valid <= 1'b0;
+						else if((pixel_cnt_dd > 0)) pixel_valid <= 1'b1;
+						else pixel_valid <= 1'b0;
+					end
+					else begin
+						if(pixel_cnt_dd == 48) pixel_valid <= 1'b1;
 						else pixel_valid <= 1'b0;
 					end
 				end
+				default : pixel_valid <= 1'b0;
 			endcase
 		end
 	end
@@ -799,10 +834,26 @@ end
 		end
 		else begin
 			case(img_state)
-				SEND_IMAGES_IDLE : if((i_state == START_ACCEL) & (w_addr_reg == 3)) img_state <= SEND_IMAGES_FIRST_ROW;
+				SEND_IMAGES_IDLE : if((i_state == START_ACCEL) & (w_addr_reg == 3) & !(conv_done)) img_state <= SEND_IMAGES_FIRST_ROW;
 				SEND_IMAGES_FIRST_ROW : if(pixel_cnt == 49) img_state <= SEND_IMAGES_MIDDLE_ROW;
 				SEND_IMAGES_MIDDLE_ROW : if((pixel_cnt == 49) & (row_cnt == 14)) img_state <= SEND_IMAGES_LAST_ROW;
 				SEND_IMAGES_LAST_ROW : if(pixel_cnt == 49) img_state <= SEND_IMAGES_IDLE;
+			endcase
+		end
+	end
+
+	reg conv_done;
+	always@(posedge clk) begin
+		if(!rstn) begin
+			conv_done <= 1'b0;
+		end
+		else begin
+			case(img_state)	
+				SEND_IMAGES_LAST_ROW : begin
+					if(pixel_cnt == 49) conv_done <= 1'b1;
+					else conv_done <= 1'b0;
+				end
+				default : conv_done <= 1'b0;
 			endcase
 		end
 	end

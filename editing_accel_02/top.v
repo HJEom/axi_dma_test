@@ -59,6 +59,6 @@
 
 	in_buffer idata_buffer(s_axis_aclk, s_axis_aresetn, s_axis_tready, s_axis_tdata, s_axis_tstrb, s_axis_tlast, s_axis_tvalid, state, state_cnvt, wdata, wdata_v, pdata1, pdata2, pdata3, pdata4, pdata5, pdata_v);
 
-//	conv conv(m_axis_aclk, m_axis_aresetn, m_axis_tvalid, m_axis_tdata, m_axis_tstrb, m_axis_tlast, m_axis_tready, wdata, wdata_v, pdata1, pdata2, pdata3, pdata4, pdata5, pdata_v);
+	conv conv(m_axis_aclk, m_axis_aresetn, m_axis_tvalid, m_axis_tdata, m_axis_tstrb, m_axis_tlast, m_axis_tready, wdata, wdata_v, pdata1, pdata2, pdata3, pdata4, pdata5, pdata_v);
 
 endmodule

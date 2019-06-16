@@ -167,14 +167,19 @@ for test_set_number in range(1):
 # input, diff image save as .txt file
 
 i_low_img = open(tested_image_path + 'i_low_img.txt','w')
+ii_low_img = open(tested_image_path + 'ii_low_img.txt','w')
 d_low_img = open(tested_image_path + 'd_low_img.txt','w')
 param_w = open(tested_image_path + 'param_w.txt','w')
 param_b = open(tested_image_path + 'param_b.txt','w')
 
 for h in range(12):
-	for w in range(48):
-		for h_partial in range(4):
-			i_low_img.write(str(int(test_low_img_uint8[h_partial+h*4][w][0]))+'\n')
+    for w in range(48):
+        for h_partial in range(4):
+            i_low_img.write(str(int(test_low_img_uint8[h_partial+h*4][w][0]))+'\n')
+
+for h in range(48):
+    for w in range(48):
+        ii_low_img.write(str(int(test_low_img_uint8[h][w][0]))+'\n')
 
 for h in range(48):
     for w in range(48):
